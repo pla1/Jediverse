@@ -11,6 +11,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Scanner;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 public class Utils {
     public static final String SYMBOL_HEART = "❤️";
@@ -245,5 +248,45 @@ public class Utils {
         return url;
     }
 
+    public static Logger getLogger() {
+        Logger logger = Logger.getLogger("JediverseJsonLog");
+        FileHandler fh;
+        try {
+            File file = File.createTempFile("jediverse_json_log_",".log");
+            System.out.format("JSON log file: %s\n", file.getAbsolutePath());
+            fh = new FileHandler(file.getAbsolutePath());
+            logger.setUseParentHandlers(false);
+            logger.addHandler(fh);
+            SimpleFormatter formatter = new SimpleFormatter();
+            fh.setFormatter(formatter);
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return logger;
+    }
+    public static String run(String[] commandParts) {
+        BufferedReader reader = null;
+        StringBuilder output = new StringBuilder();
+        try {
+            Runtime runtime = Runtime.getRuntime();
+            Process process = runtime.exec(commandParts);
+            reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String lineRead = null;
+            while ((lineRead = reader.readLine()) != null) {
+                output.append(lineRead);
+                output.append("\n");
+            }
+            int exitValue = process.waitFor();
+        }
+        catch (Exception e) {
+            output.append("Exception: " + e.getLocalizedMessage());
+        }
+        finally {
+            close(reader);
+        }
+        return output.toString();
+    }
 
 }

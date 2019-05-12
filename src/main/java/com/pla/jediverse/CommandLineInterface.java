@@ -7,11 +7,13 @@ import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
 import java.net.URL;
 import java.util.Date;
+import java.util.logging.Logger;
 
 public class CommandLineInterface {
     private static BufferedReader console;
     private JsonObject settingsJsonObject;
     private JsonArray jsonArrayAll = new JsonArray();
+    private Logger logger;
 
     public static void main(String[] args) {
         CommandLineInterface cli = new CommandLineInterface();
@@ -19,6 +21,7 @@ public class CommandLineInterface {
     }
 
     private void setup() {
+        logger = Utils.getLogger();
         JsonArray settingsJsonArray = getSettings();
         while (settingsJsonArray == null) {
             createApp();
@@ -62,6 +65,19 @@ public class CommandLineInterface {
                 JsonElement jsonElement = jsonArrayAll.get(Utils.getInt(words[1]));
                 System.out.format("Fav this: %s\n", jsonElement.toString());
                 favourite(Utils.getProperty(jsonElement, "id"));
+            }
+            if (words.length == 2 && "url".equals(words[0])) {
+                int index = Utils.getInt(words[1]);
+                JsonElement jsonElement = jsonArrayAll.get(index);
+                System.out.format("%d %s\n", index, Utils.getProperty(jsonElement,"url"));
+            }
+            if (words.length == 2 && "go".equals(words[0])) {
+                int index = Utils.getInt(words[1]);
+                JsonElement jsonElement = jsonArrayAll.get(index);
+                String urlString = Utils.getProperty(jsonElement,"url");
+                if (Utils.isNotBlank(urlString)) {
+                   Utils.run(new String[] {"xdg-open",urlString});
+                }
             }
             if (words.length == 2 && "unfav".equals(words[0])) {
                 JsonElement jsonElement = jsonArrayAll.get(Utils.getInt(words[1]));
@@ -134,10 +150,10 @@ public class CommandLineInterface {
         params.addProperty("redirect_uri", jsonObject.get("redirect_uri").getAsString());
         JsonObject outputJsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
         jsonObject.addProperty("access_token", outputJsonObject.get("access_token").getAsString());
-        jsonObject.addProperty("refresh_token", outputJsonObject.get("refresh_token").getAsString());
-        jsonObject.addProperty("me", outputJsonObject.get("me").getAsString());
-        jsonObject.addProperty("expires_in", outputJsonObject.get("expires_in").getAsInt());
-        jsonObject.addProperty("created_at", outputJsonObject.get("created_at").getAsLong());
+        jsonObject.addProperty("refresh_token", Utils.getProperty(outputJsonObject, "refresh_token"));
+        jsonObject.addProperty("me", Utils.getProperty(outputJsonObject, "me"));
+        jsonObject.addProperty("expires_in", Utils.getProperty(outputJsonObject, "expires_in"));
+        jsonObject.addProperty("created_at", Utils.getProperty(outputJsonObject, "created_at"));
         jsonObject.addProperty("instance", instance);
         JsonArray jsonArray = new JsonArray();
         jsonArray.add(jsonObject);
@@ -191,6 +207,7 @@ public class CommandLineInterface {
         JsonArray jsonArray = getJsonArray(urlString);
         for (JsonElement jsonElement : jsonArray) {
             jsonArrayAll.add(jsonElement);
+            logger.info(jsonElement.toString());
             String symbol = Utils.SYMBOL_PENCIL;
             JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
             String acct = Utils.getProperty(accountJe, "acct");
@@ -209,18 +226,25 @@ public class CommandLineInterface {
         System.out.println(urlString);
         JsonArray jsonArray = getJsonArray(urlString);
         for (JsonElement jsonElement : jsonArray) {
+            logger.info(jsonElement.toString());
             String symbol = Utils.SYMBOL_PENCIL;
             String text = "";
-            if ("favourite".equals(Utils.getProperty(jsonElement, "type"))) {
+            String type = Utils.getProperty(jsonElement, "type");
+            if ("favourite".equals(type)) {
                 symbol = Utils.SYMBOL_HEART;
                 JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
                 text = Jsoup.parse(Utils.getProperty(statusJe, "content")).text();
             }
-            if ("follow".equals(Utils.getProperty(jsonElement, "type"))) {
+            if ("follow".equals(type)) {
                 symbol = Utils.SYMBOL_MAILBOX;
             }
-            if ("reblog".equals(Utils.getProperty(jsonElement, "type"))) {
+            if ("reblog".equals(type)) {
                 symbol = Utils.SYMBOL_REPEAT;
+            }
+            if ("mention".equals(type)) {
+                symbol = Utils.SYMBOL_SPEAKER;
+                JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
+                text = Jsoup.parse(Utils.getProperty(statusJe, "content")).text();
             }
             JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
             String acct = Utils.getProperty(accountJe, "acct");
