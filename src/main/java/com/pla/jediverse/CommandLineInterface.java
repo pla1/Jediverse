@@ -249,7 +249,7 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/statuses/%s/favourite", settingsJsonObject.get("instance").getAsString(), id);
         System.out.println(urlString);
         JsonObject  jsonObject =  postAsJson(Utils.getUrl(urlString), null);
-        System.out.format("Favorited: %s\n", jsonObject.toString());
+        System.out.format("Favorite: %s\n", jsonObject.toString());
     }
 
     private JsonObject postAsJson(URL url, String json) {
