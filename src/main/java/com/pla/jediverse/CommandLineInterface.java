@@ -251,14 +251,14 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/statuses/%s/favourite", settingsJsonObject.get("instance").getAsString(), id);
         System.out.println(urlString);
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), null);
-        System.out.format("Favorited: %s\n", jsonObject.get("url").getAsString());
+        System.out.format("Favorited: %s\n", Utils.getProperty(jsonObject, "url"));
     }
 
     private void unfavourite(String id) {
         String urlString = String.format("https://%s/api/v1/statuses/%s/unfavourite", settingsJsonObject.get("instance").getAsString(), id);
         System.out.println(urlString);
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), null);
-        System.out.format("Unfavorited: %s\n", jsonObject.get("url").getAsString());
+        System.out.format("Unfavorited: %s\n", Utils.getProperty(jsonObject, "url"));
     }
 
     private JsonObject postAsJson(URL url, String json) {
@@ -274,9 +274,9 @@ public class CommandLineInterface {
             urlConnection.setUseCaches(false);
             urlConnection.setRequestMethod("POST");
             if (settingsJsonObject != null) {
-                String authorization = String.format("Bearer %s", settingsJsonObject.get("access_token").getAsString());
+                String authorization = String.format("Bearer %s", Utils.getProperty(settingsJsonObject, "access_token"));
                 urlConnection.setRequestProperty("Authorization", authorization);
-       //         System.out.format("Setting authorization header: %s\n", authorization);
+                //         System.out.format("Setting authorization header: %s\n", authorization);
             }
             if (json != null) {
                 urlConnection.setRequestProperty("Content-type", "application/json; charset=UTF-8");
