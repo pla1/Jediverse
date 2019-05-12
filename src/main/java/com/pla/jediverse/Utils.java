@@ -165,6 +165,11 @@ public class Utils {
                         inputStream.close();
                         closed = true;
                     }
+                    if (object instanceof OutputStream) {
+                        OutputStream outputStream = (OutputStream) object;
+                        outputStream.close();
+                        closed = true;
+                    }
                     if (object instanceof Socket) {
                         Socket socket = (Socket) object;
                         socket.close();

@@ -54,19 +54,19 @@ public class CommandLineInterface {
             if ("notifications".equals(line) || "note".equals(line)) {
                 notifications(quantity, "");
             }
+            if (words.length > 1 && "toot".equals(words[0])) {
+                String text = line.substring(5);
+                toot(text);
+            }
             if (words.length == 2 && "fav".equals(words[0])) {
-                        JsonElement jsonElement = jsonArrayAll.get(Utils.getInt(words[1]));
-                        System.out.format("Fav this: %s\n", jsonElement.toString());
-                        favourite(Utils.getProperty(jsonElement, "id"));
-                //         String action = "create";
-                //         JsonElement jsonElement = main.favorite(statusId, action);
-                //         System.out.format("%s\n", jsonElement);
+                JsonElement jsonElement = jsonArrayAll.get(Utils.getInt(words[1]));
+                System.out.format("Fav this: %s\n", jsonElement.toString());
+                favourite(Utils.getProperty(jsonElement, "id"));
             }
             if (words.length == 2 && "unfav".equals(words[0])) {
-                //        String statusId = items.get(Utils.getInt(words[1]));
-                //         String action = "destroy";
-                //        JsonElement jsonElement = main.favorite(statusId, action);
-                //        System.out.format("%s\n", jsonElement);
+                JsonElement jsonElement = jsonArrayAll.get(Utils.getInt(words[1]));
+                System.out.format("Fav this: %s\n", jsonElement.toString());
+                unfavourite(Utils.getProperty(jsonElement, "id"));
             }
             if ("quit".equals(line)) {
                 System.exit(0);
@@ -97,6 +97,15 @@ public class CommandLineInterface {
         return settingsJsonArray.get(selection).getAsJsonObject();
     }
 
+    private void toot(String text) {
+        String urlString = String.format("https://%s/api/v1/statuses", settingsJsonObject.get("instance").getAsString());
+        JsonObject params = new JsonObject();
+        params.addProperty("status", text);
+        params.addProperty("visibility", "direct");
+        JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
+        System.out.format("Tooted: %s\n", jsonObject.get("url").getAsString());
+    }
+
     private void createApp() {
         String prompt = "Type your instance name and press ENTER. For example: pleroma.site";
         String instance = ask(prompt);
@@ -104,44 +113,37 @@ public class CommandLineInterface {
             System.out.format("Instance can not be blank.\n");
             instance = ask(prompt);
         }
-        String urlString = String.format("https://%s/api/v1/apps?client_name=Jediverse+CLI+client&redirect_uris=urn:ietf:wg:oauth:2.0:oob&scopes=write,read,follow,push&website=%s",
-                instance, Utils.urlEncodeComponent("https://github.com/pla1/jediverse"));
-        //    System.out.println(urlString);
-        URL url = Utils.getUrl(urlString);
-        InputStream inputStream = null;
-        try {
-            HttpsURLConnection urlConnection = (HttpsURLConnection) url.openConnection();
-            urlConnection.setRequestMethod("POST");
-            inputStream = urlConnection.getInputStream();
-            InputStreamReader isr = new InputStreamReader(inputStream);
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            JsonObject jsonObject = gson.fromJson(isr, JsonObject.class);
-            System.out.format("%s\n", jsonObject.toString());
-            System.out.format("Go to https://%s/oauth/authorize?scope=write,read,follow,push&response_type=code&redirect_uri=%s&client_id=%s\n", instance, jsonObject.get("redirect_uri").getAsString(), jsonObject.get("client_id").getAsString());
-            String token = ask("Paste the token and press ENTER.");
-            urlString = String.format("https://%s/oauth/token", instance);
-            JsonObject params = new JsonObject();
-            params.addProperty("client_id", jsonObject.get("client_id").getAsString());
-            params.addProperty("client_secret", jsonObject.get("client_secret").getAsString());
-            params.addProperty("grant_type", "authorization_code");
-            params.addProperty("code", token);
-            params.addProperty("redirect_uri", jsonObject.get("redirect_uri").getAsString());
-            JsonObject outputJsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
-            jsonObject.addProperty("access_token", outputJsonObject.get("access_token").getAsString());
-            jsonObject.addProperty("refresh_token", outputJsonObject.get("refresh_token").getAsString());
-            jsonObject.addProperty("me", outputJsonObject.get("me").getAsString());
-            jsonObject.addProperty("expires_in", outputJsonObject.get("expires_in").getAsInt());
-            jsonObject.addProperty("created_at", outputJsonObject.get("created_at").getAsLong());
-            jsonObject.addProperty("instance", instance);
-            JsonArray jsonArray = new JsonArray();
-            jsonArray.add(jsonObject);
-            String pretty = gson.toJson(jsonArray);
-            Utils.write(getSettingsFileName(), pretty);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            Utils.close(inputStream);
-        }
+        JsonObject params = new JsonObject();
+        params.addProperty("client_name", "Jediverse CLI");
+        params.addProperty("redirect_uris", "urn:ietf:wg:oauth:2.0:oob");
+        params.addProperty("scopes", "read write follow push");
+        params.addProperty("website", "https://github.com/pla1/Jediverse");
+        String urlString = String.format("https://%s/api/v1/apps", instance);
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
+        System.out.format("%s\n", jsonObject.toString());
+        System.out.format("Go to https://%s/oauth/authorize?scope=%s&response_type=code&redirect_uri=%s&client_id=%s\n",
+                instance, Utils.urlEncodeComponent("write read follow push"), Utils.urlEncodeComponent(jsonObject.get("redirect_uri").getAsString()), jsonObject.get("client_id").getAsString());
+        String token = ask("Paste the token and press ENTER.");
+        urlString = String.format("https://%s/oauth/token", instance);
+        params = new JsonObject();
+        params.addProperty("client_id", jsonObject.get("client_id").getAsString());
+        params.addProperty("client_secret", jsonObject.get("client_secret").getAsString());
+        params.addProperty("grant_type", "authorization_code");
+        params.addProperty("code", token);
+        params.addProperty("redirect_uri", jsonObject.get("redirect_uri").getAsString());
+        JsonObject outputJsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
+        jsonObject.addProperty("access_token", outputJsonObject.get("access_token").getAsString());
+        jsonObject.addProperty("refresh_token", outputJsonObject.get("refresh_token").getAsString());
+        jsonObject.addProperty("me", outputJsonObject.get("me").getAsString());
+        jsonObject.addProperty("expires_in", outputJsonObject.get("expires_in").getAsInt());
+        jsonObject.addProperty("created_at", outputJsonObject.get("created_at").getAsLong());
+        jsonObject.addProperty("instance", instance);
+        JsonArray jsonArray = new JsonArray();
+        jsonArray.add(jsonObject);
+        String pretty = gson.toJson(jsonArray);
+        Utils.write(getSettingsFileName(), pretty);
+        System.out.println(jsonObject);
     }
 
     private String getSettingsFileName() {
@@ -248,8 +250,15 @@ public class CommandLineInterface {
     private void favourite(String id) {
         String urlString = String.format("https://%s/api/v1/statuses/%s/favourite", settingsJsonObject.get("instance").getAsString(), id);
         System.out.println(urlString);
-        JsonObject  jsonObject =  postAsJson(Utils.getUrl(urlString), null);
-        System.out.format("Favorite: %s\n", jsonObject.toString());
+        JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), null);
+        System.out.format("Favorited: %s\n", jsonObject.get("url").getAsString());
+    }
+
+    private void unfavourite(String id) {
+        String urlString = String.format("https://%s/api/v1/statuses/%s/unfavourite", settingsJsonObject.get("instance").getAsString(), id);
+        System.out.println(urlString);
+        JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), null);
+        System.out.format("Unfavorited: %s\n", jsonObject.get("url").getAsString());
     }
 
     private JsonObject postAsJson(URL url, String json) {
@@ -261,13 +270,23 @@ public class CommandLineInterface {
         try {
             urlConnection = (HttpsURLConnection) url.openConnection();
             urlConnection.setRequestProperty("Cache-Control", "no-cache");
+            urlConnection.setRequestProperty("Accept", "application/json");
             urlConnection.setUseCaches(false);
             urlConnection.setRequestMethod("POST");
+            if (settingsJsonObject != null) {
+                String authorization = String.format("Bearer %s", settingsJsonObject.get("access_token").getAsString());
+                urlConnection.setRequestProperty("Authorization", authorization);
+       //         System.out.format("Setting authorization header: %s\n", authorization);
+            }
             if (json != null) {
-                urlConnection.setRequestProperty("Content-type", "application/json");
+                urlConnection.setRequestProperty("Content-type", "application/json; charset=UTF-8");
                 urlConnection.setDoOutput(true);
                 urlConnection.setRequestProperty("Content-length", Integer.toString(json.length()));
-                urlConnection.getOutputStream().write(json.getBytes());
+                outputStream = urlConnection.getOutputStream();
+                outputStream.write(json.getBytes());
+                outputStream.flush();
+                int responseCode = urlConnection.getResponseCode();
+                System.out.format("Response code: %d\n", responseCode);
             }
             urlConnection.setInstanceFollowRedirects(true);
             inputStream = urlConnection.getInputStream();
