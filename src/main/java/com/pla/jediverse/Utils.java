@@ -10,12 +10,26 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Scanner;
+import java.util.TimeZone;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 public class Utils {
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_BLACK = "\u001B[30m";
+    public static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_PURPLE = "\u001B[35m";
+    public static final String ANSI_CYAN = "\u001B[36m";
+    public static final String ANSI_WHITE = "\u001B[37m";
     public static final String SYMBOL_HEART = "❤️";
     public static final String SYMBOL_SPEAKER = "\uD83D\uDD0A";
     public static final String SYMBOL_PENCIL = "\uD83D\uDD89";
@@ -72,6 +86,9 @@ public class Utils {
     }
 
     public static int getInt(String s) {
+        if (s == null) {
+            return 0;
+        }
         try {
             return Integer.parseInt(s);
         } catch (NumberFormatException nfe) {
@@ -84,7 +101,7 @@ public class Utils {
             return null;
         }
         JsonElement property = jsonElement.getAsJsonObject().get(propertyName);
-        if (property != null) {
+        if (property != null && !property.isJsonNull()) {
             return property.getAsString();
         }
         return null;
@@ -208,8 +225,11 @@ public class Utils {
     }
 
     public static long getLong(String s) {
+        if (s == null) {
+            return 0;
+        }
         try {
-            return Long.getLong(s);
+            return Long.parseLong(s);
         } catch (NumberFormatException nfe) {
             return 0;
         }
@@ -217,7 +237,7 @@ public class Utils {
 
     public static void print(Object object) {
         if (object == null) {
-           return;
+            return;
         }
         if (object instanceof JsonObject) {
             JsonObject jsonObject = (JsonObject) object;
@@ -252,7 +272,7 @@ public class Utils {
         Logger logger = Logger.getLogger("JediverseJsonLog");
         FileHandler fh;
         try {
-            File file = File.createTempFile("jediverse_json_log_",".log");
+            File file = File.createTempFile("jediverse_json_log_", ".log");
             System.out.format("JSON log file: %s\n", file.getAbsolutePath());
             fh = new FileHandler(file.getAbsolutePath());
             logger.setUseParentHandlers(false);
@@ -266,6 +286,16 @@ public class Utils {
         }
         return logger;
     }
+
+    public static boolean isSameDay(Date date1, Date date2) {
+        Calendar calendar1 = Calendar.getInstance();
+        Calendar calendar2 = Calendar.getInstance();
+        calendar1.setTime(date1);
+        calendar2.setTime(date2);
+        return (calendar1.get(Calendar.YEAR) == calendar2.get(Calendar.YEAR)
+                && calendar1.get(Calendar.DAY_OF_YEAR) == calendar2.get(Calendar.DAY_OF_YEAR));
+    }
+
     public static String run(String[] commandParts) {
         BufferedReader reader = null;
         StringBuilder output = new StringBuilder();
@@ -279,14 +309,120 @@ public class Utils {
                 output.append("\n");
             }
             int exitValue = process.waitFor();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             output.append("Exception: " + e.getLocalizedMessage());
-        }
-        finally {
+        } finally {
             close(reader);
         }
         return output.toString();
+    }
+
+    public static String readFileToString(String fileName) {
+        StringBuilder sb = new StringBuilder();
+        File file = new File(fileName);
+        BufferedReader bufferedReader = null;
+        try {
+            bufferedReader = new BufferedReader(new FileReader(file));
+            String line = bufferedReader.readLine();
+            String lineSeparator = System.getProperty("line.separator");
+            while (line != null) {
+                sb.append(line);
+                sb.append(lineSeparator);
+                line = bufferedReader.readLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            close(bufferedReader);
+        }
+
+        return sb.toString();
+    }
+
+    public static String getDateDisplay(Date date) {
+        if (date == null) {
+            return "";
+        }
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+        StringBuffer buf = new StringBuffer();
+        buf.append(" a");
+        if (calendar.get(Calendar.SECOND) != 0) {
+            buf.insert(0, ":ss");
+        }
+        if (calendar.get(Calendar.MINUTE) != 0 || calendar.get(Calendar.SECOND) != 0) {
+            buf.insert(0, ":mm");
+        }
+        buf.insert(0, " h");
+        if (!isYearEqual(calendar.getTime(), new Date())) {
+            buf.insert(0, ", yyyy");
+        }
+        if (!isToday(calendar.getTime())) {
+            buf.insert(0, "EEE MMM dd");
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat(buf.toString());
+        String string = sdf.format(date);
+        if (!date.after(getMidnight()) && !date.before(getMidnight())) {
+            return "Midnight";
+        }
+        return string.trim();
+    }
+    public static boolean isYearEqual(Date date1, Date date2) {
+        if (date1 == null || date2 == null) {
+            return false;
+        }
+        Calendar calendar1 = Calendar.getInstance();
+        Calendar calendar2 = Calendar.getInstance();
+        calendar1.setTime(date1);
+        calendar2.setTime(date2);
+        if (calendar1.get(Calendar.YEAR) == calendar2.get(Calendar.YEAR)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    public static Date getMidnight() {
+        return setTimeToMidnight(new Date());
+    }
+    public static Date setTimeToMidnight(Date date) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTime();
+    }
+    public static Calendar setTimeToMidnight(Calendar calendar) {
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar;
+    }
+
+    public static boolean isToday(java.util.Date date) {
+        if (date == null) {
+            return false;
+        }
+        Calendar calendarToday = Calendar.getInstance();
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+        return (calendar.get(Calendar.DAY_OF_YEAR) == calendarToday.get(Calendar.DAY_OF_YEAR)
+                && calendar.get(Calendar.YEAR) == calendarToday.get(Calendar.YEAR));
+    }
+    public static Date toDate(String timestampString) {
+        if (timestampString == null) {
+            return null;
+        }
+        SimpleDateFormat dateFormatTimestamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'");
+        dateFormatTimestamp.setTimeZone(TimeZone.getTimeZone("GMT"));
+        try {
+            return dateFormatTimestamp.parse(timestampString);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
 }

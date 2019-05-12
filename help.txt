@@ -1,0 +1,37 @@
+Commands:
+
+aa
+    Add account to this program.
+
+fav
+    Favorite a status. Pass the status index.
+
+fed
+    Show federated timeline
+
+go
+    Open your default browser to the status. Pass the status index. Uses xdg-open. YMMV. 
+
+help
+    Show this help file.
+
+local
+    Show local timeline
+
+notifications or note
+    Show notifications.
+
+quit
+    Quit Jediverse CLI program.
+
+timeline
+    Show timeline.
+
+toot
+    Post a status. Pass the text.
+
+unfav
+    Unfavor a status. Pass the status index.
+
+url
+    Show url for the status. Pass the status index. 
