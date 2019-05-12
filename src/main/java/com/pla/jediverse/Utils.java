@@ -81,8 +81,21 @@ public class Utils {
         close(pw);
     }
 
+    public static boolean isNumeric(String s) {
+        try {
+            Double.parseDouble(s);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     public static boolean isNotBlank(String s) {
         return !isBlank(s);
+    }
+
+    public static boolean isNotNumberic(String s) {
+        return !isNumeric(s);
     }
 
     public static int getInt(String s) {
@@ -267,6 +280,15 @@ public class Utils {
         }
         return url;
     }
+    public static URI getUri(String urlString) {
+        URI uri = null;
+        try {
+            uri = new URL(urlString).toURI();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return uri;
+    }
 
     public static Logger getLogger() {
         Logger logger = Logger.getLogger("JediverseJsonLog");
@@ -367,6 +389,7 @@ public class Utils {
         }
         return string.trim();
     }
+
     public static boolean isYearEqual(Date date1, Date date2) {
         if (date1 == null || date2 == null) {
             return false;
@@ -381,9 +404,11 @@ public class Utils {
             return false;
         }
     }
+
     public static Date getMidnight() {
         return setTimeToMidnight(new Date());
     }
+
     public static Date setTimeToMidnight(Date date) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
@@ -393,6 +418,7 @@ public class Utils {
         calendar.set(Calendar.MILLISECOND, 0);
         return calendar.getTime();
     }
+
     public static Calendar setTimeToMidnight(Calendar calendar) {
         calendar.set(Calendar.HOUR_OF_DAY, 0);
         calendar.set(Calendar.MINUTE, 0);
@@ -411,6 +437,7 @@ public class Utils {
         return (calendar.get(Calendar.DAY_OF_YEAR) == calendarToday.get(Calendar.DAY_OF_YEAR)
                 && calendar.get(Calendar.YEAR) == calendarToday.get(Calendar.YEAR));
     }
+
     public static Date toDate(String timestampString) {
         if (timestampString == null) {
             return null;

@@ -21,6 +21,9 @@ local
 notifications or note
     Show notifications.
 
+rep or reply
+    Reply to a message.
+
 quit
     Quit Jediverse CLI program.
 
