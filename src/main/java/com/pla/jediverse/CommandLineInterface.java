@@ -57,8 +57,8 @@ public class CommandLineInterface {
         @Override
         public void run() {
             HttpClient httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
-    //        String urlString = String.format("https://%s/api/v1/streaming/user?access_token=%s",
-    //                Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
+            //        String urlString = String.format("https://%s/api/v1/streaming/user?access_token=%s",
+            //                Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
 
             String urlString = String.format("https://%s/api/v1/streaming?stream=user&access_token=%s",
                     Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
@@ -109,10 +109,17 @@ public class CommandLineInterface {
         String line;
         while ((line = console.readLine()) != null) {
             //     System.out.println(line);
+            line = line.trim();
             int quantity = 20;
             String[] words = line.split("\\s+");
             if (line.startsWith("search") && words.length > 1) {
                 search(line);
+            }
+            if ("lists".equals(line)) {
+                lists();
+            }
+            if ("list".equals(words[0]) && Utils.isNumeric(words[1])) {
+                listAccounts(words[1]);
             }
             if ("fed".equals(line)) {
                 timeline("public", quantity, "&local=false");
@@ -289,8 +296,30 @@ public class CommandLineInterface {
         }
     }
 
+    private void lists() {
+        String urlString = String.format("https://%s/api/v1/lists", Utils.getProperty(settingsJsonObject, "instance"));
+        JsonArray jsonArray = getJsonArray(urlString);
+        for (JsonElement jsonElement : jsonArray) {
+            logger.info(jsonElement.toString());
+            System.out.format("%s %s\n", Utils.getProperty(jsonElement, "id"), Utils.getProperty(jsonElement, "title"));
+        }
+    }
+
+    private void listAccounts(String listId) {
+        String urlString = String.format("https://%s/api/v1/lists/%s/accounts", Utils.getProperty(settingsJsonObject, "instance"), listId);
+        JsonArray jsonArray = getJsonArray(urlString);
+        if (jsonArray == null) {
+            System.out.format("List id %s not found.\n", listId);
+        } else {
+            for (JsonElement jsonElement : jsonArray) {
+                logger.info(jsonElement.toString());
+                System.out.format("%s %s %s\n", green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "display_name"),  Utils.getProperty(jsonElement, "url"));
+            }
+        }
+    }
+
     private void toot(String text, String inReplyToId) {
-        String urlString = String.format("https://%s/api/v1/statuses", settingsJsonObject.get("instance").getAsString());
+        String urlString = String.format("https://%s/api/v1/statuses", Utils.getProperty(settingsJsonObject, "instance"));
         JsonObject params = new JsonObject();
         params.addProperty("status", text);
         params.addProperty("visibility", "direct");
@@ -401,11 +430,15 @@ public class CommandLineInterface {
         String searchString = line.substring(7);
         String encodedQuery = Utils.urlEncodeComponent(searchString);
         String urlString = String.format("https://%s/api/v2/search?q=%s",
-                settingsJsonObject.get("instance").getAsString(), encodedQuery);
-        System.out.println(urlString);
+                Utils.getProperty(settingsJsonObject, "instance"), encodedQuery);
+      //  System.out.println(urlString);
         JsonElement jsonElement = getJsonElement(urlString);
-   //     System.out.format("%s\n", jsonElement);
-        printJsonElements(jsonElement.getAsJsonObject().getAsJsonArray("statuses"), searchString);
+        //     System.out.format("%s\n", jsonElement);
+        if (jsonElement != null) {
+            printJsonElements(jsonElement.getAsJsonObject().getAsJsonArray("statuses"), searchString);
+        } else {
+            System.out.format("Search failed for: %s.\n", searchString);
+        }
     }
 
     private void timeline(String timeline, int quantity, String extra) {
@@ -436,21 +469,32 @@ public class CommandLineInterface {
                 symbol = Utils.SYMBOL_REPEAT;
                 JsonElement reblogAccountJe = reblogJe.getAsJsonObject().get("account");
                 String reblogAccount = Utils.getProperty(reblogAccountJe, "acct");
-                reblogLabel = String.format(" %s%s%s", Utils.ANSI_YELLOW, reblogAccount, Utils.ANSI_RESET);
+                reblogLabel = yellow(reblogAccount);
             }
             JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
             String acct = Utils.getProperty(accountJe, "acct");
             String createdAt = Utils.getProperty(jsonElement, "created_at");
             String text = Jsoup.parse(Utils.getProperty(jsonElement, "content")).text();
             if (Utils.isNotBlank(searchString)) {
-                String searchStringHighlighted = String.format("%s%s%s", Utils.ANSI_REVERSE_VIDEO, searchString, Utils.ANSI_RESET);
+                String searchStringHighlighted = reverseVideo(searchString);
                 text = text.replaceAll(searchString, searchStringHighlighted);
             }
             String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
-            System.out.format("%d %s%s %s %s%s%s %s\n",
-                    jsonArrayAll.size() - 1, symbol, reblogLabel, dateDisplay, Utils.ANSI_GREEN, acct, Utils.ANSI_RESET, text);
+            System.out.format("%d %s%s %s %s %s\n", jsonArrayAll.size() - 1, symbol, reblogLabel, dateDisplay, green(acct), text);
         }
         System.out.format("%d items.\n", jsonArray.size());
+    }
+
+    private String yellow(String s) {
+        return String.format("%s%s%s%s", Utils.ANSI_BOLD, Utils.ANSI_YELLOW, s, Utils.ANSI_RESET);
+    }
+
+    private String green(String s) {
+        return String.format("%s%s%s%s", Utils.ANSI_BOLD, Utils.ANSI_GREEN, s, Utils.ANSI_RESET);
+    }
+
+    private String reverseVideo(String s) {
+        return String.format("%s%s%s", Utils.ANSI_REVERSE_VIDEO, s, Utils.ANSI_RESET);
     }
 
     private void notifications(int quantity, String extra) {
@@ -486,8 +530,7 @@ public class CommandLineInterface {
             JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
             String acct = Utils.getProperty(accountJe, "acct");
             //   System.out.format("\n\n%s %s %s\n%s\n", symbol, acct, text, jsonElement);
-            System.out.format("%d %s %s %s%s%s %s\n",
-                    jsonArrayAll.size() - 1, symbol, dateDisplay, Utils.ANSI_GREEN, acct, Utils.ANSI_RESET, text);
+            System.out.format("%d %s %s %s %s\n", jsonArrayAll.size() - 1, symbol, dateDisplay, green(acct), text);
         }
         System.out.format("%d items.\n", jsonArray.size());
     }
@@ -578,7 +621,7 @@ public class CommandLineInterface {
     }
 
     private JsonElement whoami() {
-        String urlString = String.format("https://%s/api/v1/accounts/verify_credentials", settingsJsonObject.get("instance").getAsString());
+        String urlString = String.format("https://%s/api/v1/accounts/verify_credentials", Utils.getProperty(settingsJsonObject, "instance"));
         JsonElement jsonElement = getJsonElement(urlString);
         return jsonElement;
     }
