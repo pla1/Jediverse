@@ -15,6 +15,12 @@ go
 help
     Show this help file.
 
+list
+    Show accounts on list. Pass the list ID from the lists output.
+
+lists
+    Show lists
+
 local
     Show local timeline
 
