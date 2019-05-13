@@ -143,7 +143,7 @@ public class CommandLineInterface {
                     threadStreaming.streamingStop();
                 }
             }
-            if ("timeline".equals(line)) {
+            if ("timeline".equals(line) || "tl".equals(line)) {
                 timeline("home", quantity, "");
             }
             if ("notifications".equals(line) || "note".equals(line)) {
@@ -435,7 +435,7 @@ public class CommandLineInterface {
                 symbol = Utils.SYMBOL_REPEAT;
                 JsonElement reblogAccountJe = reblogJe.getAsJsonObject().get("account");
                 String reblogAccount = Utils.getProperty(reblogAccountJe, "acct");
-                reblogLabel = String.format(" %s", reblogAccount);
+                reblogLabel = String.format(" %s%s%s", Utils.ANSI_YELLOW, reblogAccount, Utils.ANSI_RESET);
             }
             JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
             String acct = Utils.getProperty(accountJe, "acct");
