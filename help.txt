@@ -27,7 +27,7 @@ rep or reply
 quit
     Quit Jediverse CLI program.
 
-timeline
+timeline or tl
     Show timeline.
 
 toot
