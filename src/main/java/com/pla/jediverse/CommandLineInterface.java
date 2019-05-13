@@ -398,13 +398,14 @@ public class CommandLineInterface {
     }
 
     private void search(String line) {
-        String encodedQuery = Utils.urlEncodeComponent(line.substring(7));
+        String searchString = line.substring(7);
+        String encodedQuery = Utils.urlEncodeComponent(searchString);
         String urlString = String.format("https://%s/api/v2/search?q=%s",
                 settingsJsonObject.get("instance").getAsString(), encodedQuery);
         System.out.println(urlString);
         JsonElement jsonElement = getJsonElement(urlString);
-        System.out.format("%s\n", jsonElement);
-        printJsonElements(jsonElement.getAsJsonObject().getAsJsonArray("statuses"));
+   //     System.out.format("%s\n", jsonElement);
+        printJsonElements(jsonElement.getAsJsonObject().getAsJsonArray("statuses"), searchString);
     }
 
     private void timeline(String timeline, int quantity, String extra) {
@@ -419,10 +420,10 @@ public class CommandLineInterface {
                 settingsJsonObject.get("instance").getAsString(), timeline, quantity, extra, sinceIdFragment);
         JsonArray jsonArray = getJsonArray(urlString);
         //    System.out.format("%s items: %d\n%s\n", urlString, jsonArray.size(), jsonArray.toString());
-        printJsonElements(jsonArray);
+        printJsonElements(jsonArray, null);
     }
 
-    private void printJsonElements(JsonArray jsonArray) {
+    private void printJsonElements(JsonArray jsonArray, String searchString) {
         int i = jsonArray.size() - 1;
         for (; i > -1; i--) {
             JsonElement jsonElement = jsonArray.get(i);
@@ -441,6 +442,10 @@ public class CommandLineInterface {
             String acct = Utils.getProperty(accountJe, "acct");
             String createdAt = Utils.getProperty(jsonElement, "created_at");
             String text = Jsoup.parse(Utils.getProperty(jsonElement, "content")).text();
+            if (Utils.isNotBlank(text)) {
+                String searchStringHighlighted = String.format("%s%s%s", Utils.ANSI_BOLD, searchString, Utils.ANSI_RESET);
+                text = text.replaceAll(searchString, searchStringHighlighted);
+            }
             String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
             System.out.format("%d %s%s %s %s%s%s %s\n",
                     jsonArrayAll.size() - 1, symbol, reblogLabel, dateDisplay, Utils.ANSI_GREEN, acct, Utils.ANSI_RESET, text);

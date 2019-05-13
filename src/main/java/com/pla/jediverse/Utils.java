@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 public class Utils {
+    public static final String ANSI_BOLD = "\u001B[1m";
     public static final String ANSI_BLACK_BACKGROUND = "\u001B[40m";
     public static final String ANSI_RED_BACKGROUND = "\u001B[41m";
     public static final String ANSI_GREEN_BACKGROUND = "\u001B[42m";
