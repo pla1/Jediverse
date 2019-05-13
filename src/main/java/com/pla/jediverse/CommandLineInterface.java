@@ -443,7 +443,7 @@ public class CommandLineInterface {
             String createdAt = Utils.getProperty(jsonElement, "created_at");
             String text = Jsoup.parse(Utils.getProperty(jsonElement, "content")).text();
             if (Utils.isNotBlank(searchString)) {
-                String searchStringHighlighted = String.format("%s%s%s", Utils.ANSI_BOLD, searchString, Utils.ANSI_RESET);
+                String searchStringHighlighted = String.format("%s%s%s", Utils.ANSI_REVERSE_VIDEO, searchString, Utils.ANSI_RESET);
                 text = text.replaceAll(searchString, searchStringHighlighted);
             }
             String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
