@@ -1,2 +1,4 @@
 # Jediverse
-Command Line Interface for The Fediverse written in Java.
+Command Line Interface for the Fediverse written in Java.
+
+[https://jediverse.com](https://jediverse.com)
