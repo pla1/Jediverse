@@ -11,6 +11,8 @@ import java.net.URL;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import java.net.http.HttpClient;
 
@@ -25,7 +27,6 @@ public class CommandLineInterface {
     private class ThreadStreaming extends Thread {
         private boolean streaming;
 
-
         public void streamingStart() {
             streaming = true;
         }
@@ -38,32 +39,46 @@ public class CommandLineInterface {
             this.setDaemon(true);
         }
 
+        private HttpResponse.PushPromiseHandler<String> pushPromiseHandler() {
+            return (HttpRequest initiatingRequest,
+                    HttpRequest pushPromiseRequest,
+                    Function<HttpResponse.BodyHandler<String>,
+                            CompletableFuture<HttpResponse<String>>> acceptor) -> {
+                acceptor.apply(HttpResponse.BodyHandlers.ofString())
+                        .thenAccept(resp -> {
+                            System.out.println(" Pushed response: " + resp.uri() + ", headers: " + resp.headers());
+                        });
+                System.out.println("Promise request: " + pushPromiseRequest.uri());
+                System.out.println("Promise request: " + pushPromiseRequest.headers());
+            };
+        }
+
+
         @Override
         public void run() {
-            HttpClient httpClient = HttpClient.newBuilder().build();
-            String urlString = String.format("https://%s/api/v1/streaming/user",
-                    Utils.getProperty(settingsJsonObject, "instance"));
+            HttpClient httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
+    //        String urlString = String.format("https://%s/api/v1/streaming/user?access_token=%s",
+    //                Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
+
+            String urlString = String.format("https://%s/api/v1/streaming?stream=user&access_token=%s",
+                    Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
+            System.out.format("%s\n", urlString);
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(Utils.getUri(urlString))
+                    .version(HttpClient.Version.HTTP_2)
                     .header("access_token", Utils.getProperty(settingsJsonObject, "access_token"))
                     .GET()
                     .build();
-            try {
-                HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-                int statusCode = response.statusCode();
-                System.out.format("Streaming status code: %d\n", statusCode);
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString(), pushPromiseHandler())
+                    .thenAccept(pageResponse -> {
+                        System.out.println("Page response status code: " + pageResponse.statusCode());
+                        System.out.println("Page response headers: " + pageResponse.headers());
+                        String responseBody = pageResponse.body();
+                        System.out.println(responseBody);
+                    })
+                    .join();
 
-            while (true) {
-                if (streaming) {
 
-                }
-                Utils.sleep(60);
-            }
         }
     }
 
@@ -96,6 +111,9 @@ public class CommandLineInterface {
             //     System.out.println(line);
             int quantity = 20;
             String[] words = line.split("\\s+");
+            if (line.startsWith("search") && words.length > 1) {
+                search(line);
+            }
             if ("fed".equals(line)) {
                 timeline("public", quantity, "&local=false");
             }
@@ -379,6 +397,16 @@ public class CommandLineInterface {
         }
     }
 
+    private void search(String line) {
+        String encodedQuery = Utils.urlEncodeComponent(line.substring(7));
+        String urlString = String.format("https://%s/api/v2/search?q=%s",
+                settingsJsonObject.get("instance").getAsString(), encodedQuery);
+        System.out.println(urlString);
+        JsonElement jsonElement = getJsonElement(urlString);
+        System.out.format("%s\n", jsonElement);
+        printJsonElements(jsonElement.getAsJsonObject().getAsJsonArray("statuses"));
+    }
+
     private void timeline(String timeline, int quantity, String extra) {
         String sinceId = null;
         String sinceIdFragment = "";
@@ -389,9 +417,12 @@ public class CommandLineInterface {
         }
         String urlString = String.format("https://%s/api/v1/timelines/%s?limit=%d%s%s",
                 settingsJsonObject.get("instance").getAsString(), timeline, quantity, extra, sinceIdFragment);
-
         JsonArray jsonArray = getJsonArray(urlString);
         //    System.out.format("%s items: %d\n%s\n", urlString, jsonArray.size(), jsonArray.toString());
+        printJsonElements(jsonArray);
+    }
+
+    private void printJsonElements(JsonArray jsonArray) {
         int i = jsonArray.size() - 1;
         for (; i > -1; i--) {
             JsonElement jsonElement = jsonArray.get(i);
@@ -416,7 +447,6 @@ public class CommandLineInterface {
         }
         System.out.format("%d items.\n", jsonArray.size());
     }
-
 
     private void notifications(int quantity, String extra) {
         String urlString = String.format("https://%s/api/v1/notifications?limit=%d%s", settingsJsonObject.get("instance").getAsString(), quantity, extra);
