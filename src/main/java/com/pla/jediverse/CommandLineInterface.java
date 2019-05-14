@@ -11,6 +11,8 @@ import java.net.URL;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.logging.Logger;
@@ -23,6 +25,7 @@ public class CommandLineInterface {
     private Logger logger;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private ThreadStreaming threadStreaming;
+    private final int DEFAULT_QUANTITY = 20;
 
     private class ThreadStreaming extends Thread {
         private boolean streaming;
@@ -105,15 +108,25 @@ public class CommandLineInterface {
         System.out.format("Using instance: %s\n", settingsJsonObject.get("instance"));
     }
 
+    private int getQuantity() {
+        int quantity = Utils.getInt(Utils.getProperty(settingsJsonObject, "quantity"));
+        if (quantity == 0) {
+            quantity = DEFAULT_QUANTITY;
+        }
+        return quantity;
+    }
+
     private void mainRoutine() throws Exception {
         String line;
         while ((line = console.readLine()) != null) {
             //     System.out.println(line);
             line = line.trim();
-            int quantity = 20;
             String[] words = line.split("\\s+");
             if (line.startsWith("search") && words.length > 1) {
                 search(line);
+            }
+            if ("following".equals(line)) {
+                following();
             }
             if ("lists".equals(line)) {
                 lists();
@@ -121,8 +134,24 @@ public class CommandLineInterface {
             if ("list".equals(words[0]) && Utils.isNumeric(words[1])) {
                 listAccounts(words[1]);
             }
+            if ("list-create".equals(words[0]) && words.length == 2) {
+                String title = words[1];
+                JsonElement jsonElement = listCreate(title);
+                if (jsonElement == null) {
+                    System.out.format("List %s not created.\n", title);
+                }
+                System.out.format("List id: %s title: %s created.\n", Utils.getProperty(jsonElement, "id"), Utils.getProperty(jsonElement, "title"));
+            }
+            if ("list-delete".equals(words[0]) && words.length == 2 && Utils.isNumeric(words[1])) {
+                String id = words[1];
+                listDelete(id);
+            }
             if ("fed".equals(line)) {
-                timeline("public", quantity, "&local=false");
+                timeline("public", "&local=false");
+            }
+            if ("quantity".equals(words[0]) && words.length == 2 && Utils.isNumeric(words[1])) {
+                int qty = Utils.getInt(words[1]);
+                updateQuantitySettings(qty);
             }
             if ("aa".equals(line)) {
                 createApp();
@@ -136,7 +165,7 @@ public class CommandLineInterface {
                 settingsJsonObject = chooseInstance(getSettingsJsonArray());
             }
             if ("local".equals(line)) {
-                timeline("public", quantity, "&local=true");
+                timeline("public", "&local=true");
             }
             if ("start".equals(line)) {
                 if (threadStreaming == null) {
@@ -151,10 +180,10 @@ public class CommandLineInterface {
                 }
             }
             if ("timeline".equals(line) || "tl".equals(line)) {
-                timeline("home", quantity, "");
+                timeline("home", "");
             }
             if ("notifications".equals(line) || "note".equals(line)) {
-                notifications(quantity, "");
+                notifications("");
             }
             if (words.length > 1 && "toot".equals(words[0])) {
                 String text = line.substring(5);
@@ -181,7 +210,7 @@ public class CommandLineInterface {
                 }
                 JsonElement jsonElement = jsonArrayAll.get(index);
                 String id = Utils.getProperty(jsonElement, "id");
-                System.out.format("Fav this: %s\n", jsonElement.toString());
+                //     System.out.format("Fav this: %s\n", jsonElement.toString());
                 if ("mention".equals(Utils.getProperty(jsonElement, "type"))) {
                     JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
                     id = Utils.getProperty(statusJe, "id");
@@ -232,6 +261,51 @@ public class CommandLineInterface {
         }
 
 
+    }
+
+    private void listDelete(String id) {
+        String urlString = String.format("https://%s/api/v1/lists/%s", Utils.getProperty(settingsJsonObject, "instance"), id);
+        int statusCode = deleteAsJson(Utils.getUrl(urlString), null);
+        System.out.format("Delete list id: %s returned status code: %d.\n", id, statusCode);
+    }
+
+    private JsonArray following() {
+        JsonElement jsonElementMe = whoami();
+        String id = Utils.getProperty(jsonElementMe, "id");
+        String urlString = String.format("https://%s/api/v1/accounts/%s/following", Utils.getProperty(settingsJsonObject, "instance"), id);
+        JsonArray jsonArray = getJsonArray(urlString);
+        System.out.println(jsonArray.toString());
+        for (JsonElement jsonElement : jsonArray) {
+            System.out.format("%s %s\n", Utils.getProperty(jsonElement, "acct"), Utils.getProperty(jsonElement, "username"));
+        }
+        System.out.format("Following %d accounts.\n", jsonArray.size());
+        return null;
+    }
+
+    private JsonElement listCreate(String title) {
+        String urlString = String.format("https://%s/api/v1/lists", Utils.getProperty(settingsJsonObject, "instance"));
+        JsonObject params = new JsonObject();
+        params.addProperty("title", title);
+        JsonElement jsonElement = postAsJson(Utils.getUrl(urlString), params.toString());
+        return jsonElement;
+    }
+
+    private void updateQuantitySettings(int quantity) {
+        if (quantity > 1) {
+            settingsJsonObject.addProperty("quantity", quantity);
+            JsonArray settingsJsonArray = getSettingsJsonArray();
+            for (JsonElement jsonElement : settingsJsonArray) {
+                if (Utils.getProperty(jsonElement, "id").equals(Utils.getProperty(settingsJsonObject, "id"))) {
+                    jsonElement.getAsJsonObject().addProperty("quantity", quantity);
+                }
+            }
+            String pretty = gson.toJson(settingsJsonArray);
+            Utils.write(getSettingsFileName(), pretty);
+            System.out.format("Quantity now set to %d and settings saved for instance: %s\n",
+                    quantity, Utils.getProperty(settingsJsonObject, "instance"));
+        } else {
+            System.out.format("Quantity must be greater than zero. %d is not.", quantity);
+        }
     }
 
     public CommandLineInterface() {
@@ -313,7 +387,7 @@ public class CommandLineInterface {
         } else {
             for (JsonElement jsonElement : jsonArray) {
                 logger.info(jsonElement.toString());
-                System.out.format("%s %s %s\n", green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "display_name"),  Utils.getProperty(jsonElement, "url"));
+                System.out.format("%s %s %s\n", green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "display_name"), Utils.getProperty(jsonElement, "url"));
             }
         }
     }
@@ -431,7 +505,7 @@ public class CommandLineInterface {
         String encodedQuery = Utils.urlEncodeComponent(searchString);
         String urlString = String.format("https://%s/api/v2/search?q=%s",
                 Utils.getProperty(settingsJsonObject, "instance"), encodedQuery);
-      //  System.out.println(urlString);
+        //  System.out.println(urlString);
         JsonElement jsonElement = getJsonElement(urlString);
         //     System.out.format("%s\n", jsonElement);
         if (jsonElement != null) {
@@ -441,7 +515,7 @@ public class CommandLineInterface {
         }
     }
 
-    private void timeline(String timeline, int quantity, String extra) {
+    private void timeline(String timeline, String extra) {
         String sinceId = null;
         String sinceIdFragment = "";
         if (jsonArrayAll.size() > 0) {
@@ -450,7 +524,7 @@ public class CommandLineInterface {
             sinceIdFragment = String.format("&since_id=%s", sinceId);
         }
         String urlString = String.format("https://%s/api/v1/timelines/%s?limit=%d%s%s",
-                settingsJsonObject.get("instance").getAsString(), timeline, quantity, extra, sinceIdFragment);
+                settingsJsonObject.get("instance").getAsString(), timeline, getQuantity(), extra, sinceIdFragment);
         JsonArray jsonArray = getJsonArray(urlString);
         //    System.out.format("%s items: %d\n%s\n", urlString, jsonArray.size(), jsonArray.toString());
         printJsonElements(jsonArray, null);
@@ -497,8 +571,8 @@ public class CommandLineInterface {
         return String.format("%s%s%s", Utils.ANSI_REVERSE_VIDEO, s, Utils.ANSI_RESET);
     }
 
-    private void notifications(int quantity, String extra) {
-        String urlString = String.format("https://%s/api/v1/notifications?limit=%d%s", settingsJsonObject.get("instance").getAsString(), quantity, extra);
+    private void notifications(String extra) {
+        String urlString = String.format("https://%s/api/v1/notifications?limit=%d%s", settingsJsonObject.get("instance").getAsString(), DEFAULT_QUANTITY, extra);
         System.out.println(urlString);
         JsonArray jsonArray = getJsonArray(urlString);
         int i = jsonArray.size() - 1;
@@ -542,6 +616,8 @@ public class CommandLineInterface {
             urlConnection = (HttpsURLConnection) url.openConnection();
             String authorization = String.format("Bearer %s", settingsJsonObject.get("access_token").getAsString());
             urlConnection.setRequestProperty("Authorization", authorization);
+            Map<String, List<String>> headers = urlConnection.getHeaderFields();
+            headers.forEach((k, v) -> System.out.format("%s:%s\n", k, v));
             InputStream is = urlConnection.getInputStream();
             InputStreamReader isr = new InputStreamReader(is);
             return gson.fromJson(isr, JsonArray.class);
@@ -569,9 +645,9 @@ public class CommandLineInterface {
 
     private void favourite(String id) {
         String urlString = String.format("https://%s/api/v1/statuses/%s/favourite", settingsJsonObject.get("instance").getAsString(), id);
-        System.out.println(urlString);
+        //    System.out.println(urlString);
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), null);
-        System.out.format("Favorited: %s\n", Utils.getProperty(jsonObject, "url"));
+        System.out.format("Favourited: %s\n", Utils.getProperty(jsonObject, "url"));
     }
 
     private void unfavourite(String id) {
@@ -618,6 +694,46 @@ public class CommandLineInterface {
             Utils.close(inputStream, outputStream);
         }
         return jsonObject;
+    }
+
+    private int deleteAsJson(URL url, String json) {
+        HttpsURLConnection urlConnection;
+        InputStream inputStream = null;
+        OutputStream outputStream = null;
+        int responseCode = 0;
+        try {
+            urlConnection = (HttpsURLConnection) url.openConnection();
+            urlConnection.setRequestProperty("Cache-Control", "no-cache");
+            urlConnection.setRequestProperty("Accept", "application/json");
+            urlConnection.setUseCaches(false);
+            urlConnection.setRequestMethod("DELETE");
+            if (settingsJsonObject != null) {
+                String authorization = String.format("Bearer %s", Utils.getProperty(settingsJsonObject, "access_token"));
+                urlConnection.setRequestProperty("Authorization", authorization);
+            }
+            if (json != null) {
+                urlConnection.setRequestProperty("Content-type", "application/json; charset=UTF-8");
+                urlConnection.setDoOutput(true);
+                urlConnection.setRequestProperty("Content-length", Integer.toString(json.length()));
+                outputStream = urlConnection.getOutputStream();
+                outputStream.write(json.getBytes());
+                outputStream.flush();
+                responseCode = urlConnection.getResponseCode();
+                //         System.out.format("Response code: %d\n", responseCode);
+            }
+            urlConnection.setInstanceFollowRedirects(true);
+            inputStream = urlConnection.getInputStream();
+            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+            String line;
+            while ((line = br.readLine()) != null) {
+                logger.info(line);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            Utils.close(inputStream, outputStream);
+        }
+        return responseCode;
     }
 
     private JsonElement whoami() {

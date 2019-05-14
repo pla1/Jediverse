@@ -30,11 +30,14 @@ notifications or note
 rep or reply
     Reply to a message.
 
+quantity
+    Set the quantity of statuses returned from timeline. Pass the quantity. Note: Server may or may not honor anything greater than 20.
+
 quit
     Quit Jediverse CLI program.
 
 timeline or tl
-    Show timeline.
+    Show timeline. Successive requests will start with the next status ID.
 
 toot
     Post a status. Pass the text.

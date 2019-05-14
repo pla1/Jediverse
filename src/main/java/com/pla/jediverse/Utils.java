@@ -46,8 +46,8 @@ public class Utils {
     public static final String SYMBOL_PADLOCK_LOCKED = "\uD83D\uDD12";
     public static final String SYMBOL_PADLOCK_UNLOCKED = "\uD83D\uDD13";
     public static final String SYMBOL_KEY = "\uD83D\uDD11";
-    public static final String SYMBOL_MAILBOX = "\uD83D\uDCEA";
-    public static final String SYMBOL_REPEAT = "♻";
+    public static final String SYMBOL_MAILBOX = "\uD83D\uDCEA ";
+    public static final String SYMBOL_REPEAT = "♻ ";
 
     public static String getAuthorizationString(String userProfile, String password) {
         StringBuilder buf = new StringBuilder();
