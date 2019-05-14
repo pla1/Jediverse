@@ -17,6 +17,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.logging.Logger;
 import java.net.http.HttpClient;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CommandLineInterface {
     private static BufferedReader console;
@@ -270,16 +272,47 @@ public class CommandLineInterface {
     }
 
     private JsonArray following() {
+        JsonArray jsonArrayFollowing = new JsonArray();
         JsonElement jsonElementMe = whoami();
         String id = Utils.getProperty(jsonElementMe, "id");
-        String urlString = String.format("https://%s/api/v1/accounts/%s/following", Utils.getProperty(settingsJsonObject, "instance"), id);
-        JsonArray jsonArray = getJsonArray(urlString);
-        System.out.println(jsonArray.toString());
-        for (JsonElement jsonElement : jsonArray) {
+        String urlString = String.format("https://%s/api/v1/accounts/%s/following?limit=50", Utils.getProperty(settingsJsonObject, "instance"), id);
+        URL url = Utils.getUrl(urlString);
+        while (url != null) {
+            HttpsURLConnection urlConnection = null;
+            try {
+                urlConnection = (HttpsURLConnection) url.openConnection();
+                String authorization = String.format("Bearer %s", settingsJsonObject.get("access_token").getAsString());
+                urlConnection.setRequestProperty("Authorization", authorization);
+                String linkHeader = urlConnection.getHeaderField("link");
+                InputStream is = urlConnection.getInputStream();
+                InputStreamReader isr = new InputStreamReader(is);
+                JsonArray jsonArray = gson.fromJson(isr, JsonArray.class);
+                jsonArrayFollowing.addAll(jsonArray);
+                System.out.format("Added %d accounts. Total: %d\n", jsonArray.size(), jsonArrayFollowing.size());
+                url = null;
+                if (Utils.isNotBlank(linkHeader)) {
+                    System.out.format("Link header: %s\n", linkHeader);
+                    Pattern pattern = Pattern.compile("<([^>]+)>;\\s+rel=\"([^\"]+)\"");
+                    Matcher matcher = pattern.matcher(linkHeader);
+                    while (matcher.find()) {
+                        urlString = matcher.group(1);
+                        String rel = matcher.group(2);
+                        System.out.format("URL: %s REL: %s\n", urlString, rel);
+                        if ("next".equals(rel)) {
+                            url = Utils.getUrl(urlString);
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                url = null;
+            }
+        }
+        for (JsonElement jsonElement : jsonArrayFollowing) {
             System.out.format("%s %s\n", Utils.getProperty(jsonElement, "acct"), Utils.getProperty(jsonElement, "username"));
         }
-        System.out.format("Following %d accounts.\n", jsonArray.size());
-        return null;
+        System.out.format("Following %d accounts.\n", jsonArrayFollowing.size());
+        return jsonArrayFollowing;
     }
 
     private JsonElement listCreate(String title) {
@@ -616,8 +649,6 @@ public class CommandLineInterface {
             urlConnection = (HttpsURLConnection) url.openConnection();
             String authorization = String.format("Bearer %s", settingsJsonObject.get("access_token").getAsString());
             urlConnection.setRequestProperty("Authorization", authorization);
-            Map<String, List<String>> headers = urlConnection.getHeaderFields();
-            headers.forEach((k, v) -> System.out.format("%s:%s\n", k, v));
             InputStream is = urlConnection.getInputStream();
             InputStreamReader isr = new InputStreamReader(is);
             return gson.fromJson(isr, JsonArray.class);
