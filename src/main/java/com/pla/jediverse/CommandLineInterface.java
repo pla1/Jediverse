@@ -275,7 +275,7 @@ public class CommandLineInterface {
         JsonArray jsonArrayFollowing = new JsonArray();
         JsonElement jsonElementMe = whoami();
         String id = Utils.getProperty(jsonElementMe, "id");
-        String urlString = String.format("https://%s/api/v1/accounts/%s/following?limit=50", Utils.getProperty(settingsJsonObject, "instance"), id);
+        String urlString = String.format("https://%s/api/v1/accounts/%s/following?limit=40", Utils.getProperty(settingsJsonObject, "instance"), id);
         URL url = Utils.getUrl(urlString);
         while (url != null) {
             HttpsURLConnection urlConnection = null;
