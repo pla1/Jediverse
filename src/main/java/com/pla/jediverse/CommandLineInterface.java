@@ -28,6 +28,7 @@ public class CommandLineInterface {
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private ThreadStreaming threadStreaming;
     private final int DEFAULT_QUANTITY = 20;
+    private JsonArray jsonArrayFollowing = new JsonArray();
 
     private class ThreadStreaming extends Thread {
         private boolean streaming;
@@ -133,11 +134,11 @@ public class CommandLineInterface {
             if ("lists".equals(line)) {
                 lists();
             }
-            if ("list".equals(words[0]) && Utils.isNumeric(words[1])) {
+            if ("list-accounts".equals(words[0]) && Utils.isNumeric(words[1])) {
                 listAccounts(words[1]);
             }
-            if ("list-create".equals(words[0]) && words.length == 2) {
-                String title = words[1];
+            if ("list-create".equals(words[0]) && words.length > 1) {
+                String title = line.substring("list-create".length()).trim();
                 JsonElement jsonElement = listCreate(title);
                 if (jsonElement == null) {
                     System.out.format("List %s not created.\n", title);
@@ -147,6 +148,15 @@ public class CommandLineInterface {
             if ("list-delete".equals(words[0]) && words.length == 2 && Utils.isNumeric(words[1])) {
                 String id = words[1];
                 listDelete(id);
+            }
+            if ("list-delete-account".equals(words[0]) && words.length == 3 && Utils.isNumeric(words[1]) && Utils.isNumeric(words[2])) {
+                String listId = words[1];
+                String accountId = words[2];
+                listDeleteAccount(listId, accountId);
+            }
+            if ("list-add-accounts".equals(words[0]) && words.length == 3 && Utils.isNumeric(words[1])) {
+                String id = words[1];
+                listAddAccount(id, words[2]);
             }
             if ("fed".equals(line)) {
                 timeline("public", "&local=false");
@@ -264,16 +274,44 @@ public class CommandLineInterface {
 
 
     }
-
+    private void listDeleteAccount(String listId, String accountId) {
+        //// TODO: 5/15/19  
+    }
     private void listDelete(String id) {
         String urlString = String.format("https://%s/api/v1/lists/%s", Utils.getProperty(settingsJsonObject, "instance"), id);
         int statusCode = deleteAsJson(Utils.getUrl(urlString), null);
         System.out.format("Delete list id: %s returned status code: %d.\n", id, statusCode);
     }
 
-    private JsonArray following() {
-        JsonArray jsonArrayFollowing = new JsonArray();
+    private void listAddAccount(String id, String searchString) {
+        if (jsonArrayFollowing.size() == 0) {
+            following();
+        }
+        JsonArray foundJsonArray = new JsonArray();
+        for (JsonElement accountJsonElement : jsonArrayFollowing) {
+            String acct = Utils.getProperty(accountJsonElement, "acct");
+            String username = Utils.getProperty(accountJsonElement, "username");
+            if (Utils.contains(acct, searchString) || Utils.contains(username, searchString)) {
+                foundJsonArray.add(accountJsonElement);
+            }
+        }
+        System.out.format("\n%d accounts contain \"%s\" and added to list ID %s.\n", foundJsonArray.size(), searchString, id);
+        JsonArray arrayOfIds = new JsonArray();
+        for (JsonElement accountJsonElement : foundJsonArray) {
+            System.out.format("%s %s\n", Utils.getProperty(accountJsonElement, "acct"), Utils.getProperty(accountJsonElement, "username"));
+            arrayOfIds.add(Utils.getProperty(accountJsonElement, "id"));
+        }
+        String urlString = String.format("https://%s/api/v1/lists/%s/accounts", Utils.getProperty(settingsJsonObject, "instance"), id);
+        JsonObject params = new JsonObject();
+        params.add("account_ids", arrayOfIds);
+        JsonElement jsonElement = postAsJson(Utils.getUrl(urlString), params.toString());
+        System.out.format("RESPONSE: %s\n", jsonElement.toString());
+    }
+
+    private void following() {
+        jsonArrayFollowing = new JsonArray();
         JsonElement jsonElementMe = whoami();
+        System.out.format("Gathering accounts %s is following.\n", Utils.getProperty(jsonElementMe, "acct"));
         String id = Utils.getProperty(jsonElementMe, "id");
         String urlString = String.format("https://%s/api/v1/accounts/%s/following?limit=40", Utils.getProperty(settingsJsonObject, "instance"), id);
         URL url = Utils.getUrl(urlString);
@@ -309,10 +347,10 @@ public class CommandLineInterface {
             }
         }
         for (JsonElement jsonElement : jsonArrayFollowing) {
-            System.out.format("%s %s\n", Utils.getProperty(jsonElement, "acct"), Utils.getProperty(jsonElement, "username"));
+            logger.info(jsonElement.toString());
+            System.out.format("%s %s\n", green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "username"));
         }
         System.out.format("Following %d accounts.\n", jsonArrayFollowing.size());
-        return jsonArrayFollowing;
     }
 
     private JsonElement listCreate(String title) {
@@ -418,9 +456,10 @@ public class CommandLineInterface {
         if (jsonArray == null) {
             System.out.format("List id %s not found.\n", listId);
         } else {
+            int i = 0;
             for (JsonElement jsonElement : jsonArray) {
                 logger.info(jsonElement.toString());
-                System.out.format("%s %s %s\n", green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "display_name"), Utils.getProperty(jsonElement, "url"));
+                System.out.format("%d %s %s %s\n",i++, green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "display_name"), Utils.getProperty(jsonElement, "url"));
             }
         }
     }
