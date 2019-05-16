@@ -1,29 +1,24 @@
 package com.pla.jediverse;
 
-import com.google.common.collect.Lists;
 import com.google.gson.*;
 import org.jsoup.Jsoup;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
-import java.net.Authenticator;
 import java.net.URI;
 import java.net.URL;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.logging.Logger;
-import java.net.http.HttpClient;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+
+// TODO: 5/16/19 Need to clear objects and stop streaming when switching instances.
+
 
 public class CommandLineInterface {
     private static BufferedReader console;
@@ -137,6 +132,7 @@ public class CommandLineInterface {
     }
 
     private void setup() {
+        console = new BufferedReader(new InputStreamReader(System.in));
         logger = Utils.getLogger();
         JsonArray settingsJsonArray = getSettings();
         while (settingsJsonArray == null || settingsJsonArray.size() == 0) {
@@ -457,7 +453,6 @@ public class CommandLineInterface {
     }
 
     public CommandLineInterface() {
-        console = new BufferedReader(new InputStreamReader(System.in));
         setup();
         try {
             mainRoutine();
