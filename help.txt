@@ -15,8 +15,20 @@ go
 help
     Show this help file.
 
-list
+list-accounts
     Show accounts on list. Pass the list ID from the lists output.
+
+list-add-accounts
+    Add accounts to a list. It will add users from your following list based on the name you provide. Pass the user name.
+
+list-create
+    Create a new list. Pass the title.
+
+list-delete
+    Delete a list. Pass the id of the list.
+
+list-delete-account
+    Delete an account from a list. Pass the list ID and account ID.
 
 lists
     Show lists

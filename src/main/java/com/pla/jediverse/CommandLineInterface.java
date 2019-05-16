@@ -151,8 +151,8 @@ public class CommandLineInterface {
             }
             if ("list-delete-account".equals(words[0]) && words.length == 3 && Utils.isNumeric(words[1]) && Utils.isNumeric(words[2])) {
                 String listId = words[1];
-                String accountId = words[2];
-                listDeleteAccount(listId, accountId);
+                String accountIndex = words[2];
+                listDeleteAccount(listId, accountIndex);
             }
             if ("list-add-accounts".equals(words[0]) && words.length == 3 && Utils.isNumeric(words[1])) {
                 String id = words[1];
@@ -274,9 +274,25 @@ public class CommandLineInterface {
 
 
     }
-    private void listDeleteAccount(String listId, String accountId) {
-        //// TODO: 5/15/19  
+
+    private void listDeleteAccount(String listId, String accountIndex) {
+        JsonArray accountsJsonArray = listAccounts(listId);
+        JsonElement accountJsonElement = accountsJsonArray.get(Utils.getInt(accountIndex));
+        if (accountJsonElement == null) {
+            System.out.format("Account index %s not found for list ID %s.\n", accountIndex, listId);
+            return;
+        }
+        JsonArray arrayOfIds = new JsonArray();
+        arrayOfIds.add(Utils.getProperty(accountJsonElement, "id"));
+        JsonObject params = new JsonObject();
+        params.add("account_ids", arrayOfIds);
+        String urlString = String.format("https://%s/api/v1/lists/%s/accounts", Utils.getProperty(settingsJsonObject, "instance"), listId);
+        int statusCode = deleteAsJson(Utils.getUrl(urlString), params.toString());
+        System.out.format("Status code %d from removing account ID %s index %s from list id %s.\n",
+                statusCode, Utils.getProperty(accountJsonElement, "id"), accountIndex, listId);
+        listAccounts(listId);
     }
+
     private void listDelete(String id) {
         String urlString = String.format("https://%s/api/v1/lists/%s", Utils.getProperty(settingsJsonObject, "instance"), id);
         int statusCode = deleteAsJson(Utils.getUrl(urlString), null);
@@ -450,7 +466,7 @@ public class CommandLineInterface {
         }
     }
 
-    private void listAccounts(String listId) {
+    private JsonArray listAccounts(String listId) {
         String urlString = String.format("https://%s/api/v1/lists/%s/accounts", Utils.getProperty(settingsJsonObject, "instance"), listId);
         JsonArray jsonArray = getJsonArray(urlString);
         if (jsonArray == null) {
@@ -459,9 +475,10 @@ public class CommandLineInterface {
             int i = 0;
             for (JsonElement jsonElement : jsonArray) {
                 logger.info(jsonElement.toString());
-                System.out.format("%d %s %s %s\n",i++, green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "display_name"), Utils.getProperty(jsonElement, "url"));
+                System.out.format("%d %s %s %s\n", i++, green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "display_name"), Utils.getProperty(jsonElement, "url"));
             }
         }
+        return jsonArray;
     }
 
     private void toot(String text, String inReplyToId) {
