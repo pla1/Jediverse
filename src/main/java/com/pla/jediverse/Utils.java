@@ -78,6 +78,15 @@ public class Utils {
 
     }
 
+    public static void main(String[] args) {
+        JsonParser jsonParser = new JsonParser();
+        JsonElement jsonElement = jsonParser.parse("STRING");
+        System.out.format("JSON Object: %s\n", isJsonObject(jsonElement));
+        jsonElement = jsonParser.parse("{\"field1\":\"value1\"}");
+        System.out.format("JSON Object: %s\n", isJsonObject(jsonElement));
+        System.exit(0);
+    }
+
     public static void write(String outputFileName, String text) {
         PrintWriter pw = null;
         try {
@@ -290,6 +299,7 @@ public class Utils {
         }
         return url;
     }
+
     public static URI getUri(String urlString) {
         URI uri = null;
         try {
@@ -467,6 +477,18 @@ public class Utils {
             return false;
         }
         return (s1.toLowerCase().contains(s2.toLowerCase()));
+    }
+
+    public static boolean isJsonObject(JsonElement jsonElement) {
+        if (jsonElement == null) {
+            return false;
+        }
+        try {
+            jsonElement.getAsJsonObject();
+            return true;
+        } catch (java.lang.IllegalStateException e) {
+            return false;
+        }
     }
 
 }

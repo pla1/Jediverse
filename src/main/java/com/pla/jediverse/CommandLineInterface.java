@@ -7,13 +7,18 @@ import org.jsoup.Jsoup;
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
 import java.net.Authenticator;
+import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.WebSocket;
+import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Logger;
 import java.net.http.HttpClient;
@@ -31,60 +36,98 @@ public class CommandLineInterface {
     private JsonArray jsonArrayFollowing = new JsonArray();
 
     private class ThreadStreaming extends Thread {
-        private boolean streaming;
+        private WebSocket webSocket;
 
-        public void streamingStart() {
-            streaming = true;
+        public void streamingStart(String stream) {
+            var client = HttpClient.newHttpClient();
+            String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
+                    Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
+            webSocket = client.newWebSocketBuilder()
+                    .buildAsync(URI.create(urlString), wsListener).join();
         }
 
         public void streamingStop() {
-            streaming = false;
+            if (webSocket != null) {
+                webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "ok");
+            }
         }
 
         public ThreadStreaming() {
             this.setDaemon(true);
         }
 
-        private HttpResponse.PushPromiseHandler<String> pushPromiseHandler() {
-            return (HttpRequest initiatingRequest,
-                    HttpRequest pushPromiseRequest,
-                    Function<HttpResponse.BodyHandler<String>,
-                            CompletableFuture<HttpResponse<String>>> acceptor) -> {
-                acceptor.apply(HttpResponse.BodyHandlers.ofString())
-                        .thenAccept(resp -> {
-                            System.out.println(" Pushed response: " + resp.uri() + ", headers: " + resp.headers());
-                        });
-                System.out.println("Promise request: " + pushPromiseRequest.uri());
-                System.out.println("Promise request: " + pushPromiseRequest.headers());
-            };
-        }
+        WebSocket.Listener wsListener = new WebSocket.Listener() {
+            private StringBuilder sb = new StringBuilder();
+            private Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            private JsonParser jsonParser = new JsonParser();
+
+            @Override
+            public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
+                logger.info(String.format("onText Last: %s Data: %s", last, data));
+                //      System.out.format("onText Last: %s Data: %s\n", last, data);
+                if (last) {
+                    sb.append(data);
+                    JsonElement messageJsonElement = jsonParser.parse(sb.toString());
+                    if (!messageJsonElement.isJsonNull()) {
+                        String payload = messageJsonElement.getAsJsonObject().get("payload").getAsString();
+                        if (Utils.isNotBlank(payload)) {
+                            JsonElement payloadJsonElement = jsonParser.parse(payload);
+                            if (Utils.isJsonObject(payloadJsonElement)) {
+                                printJsonElement(payloadJsonElement, null);
+                            }
+                        } else {
+                            System.out.format("Payload is blank.\n");
+                        }
+                    } else {
+                     //   System.out.format("JSON element is null.\n");
+                    }
+                    sb = new StringBuilder();
+                } else {
+                    sb.append(data);
+                }
+                return WebSocket.Listener.super.onText(webSocket, data, last);
+            }
+
+            @Override
+            public CompletionStage<?> onPing(WebSocket webSocket, ByteBuffer message) {
+                String.format("onPing Message: %s\n", message);
+                return WebSocket.Listener.super.onPing(webSocket, message);
+            }
+
+            @Override
+            public CompletionStage<?> onPong(WebSocket webSocket, ByteBuffer message) {
+                String.format("onPong Message: %s\n", message);
+                return WebSocket.Listener.super.onPong(webSocket, message);
+            }
+
+            @Override
+            public void onOpen(WebSocket webSocket) {
+                System.out.println("Websocket opened.");
+                WebSocket.Listener.super.onOpen(webSocket);
+            }
+
+            @Override
+            public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
+                System.out.println("onClose: " + statusCode + " " + reason);
+                return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
+            }
+
+            @Override
+            public void onError(WebSocket webSocket, Throwable error) {
+                System.out.format("Websocket error: %s.\n", error.getLocalizedMessage());
+                error.printStackTrace();
+            }
+
+            @Override
+            public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
+                System.out.format("Binary data received on websocket.\n");
+                return WebSocket.Listener.super.onBinary(webSocket, data, last);
+            }
+        };
 
 
         @Override
         public void run() {
-            HttpClient httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
-            //        String urlString = String.format("https://%s/api/v1/streaming/user?access_token=%s",
-            //                Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
-
-            String urlString = String.format("https://%s/api/v1/streaming?stream=user&access_token=%s",
-                    Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
-            System.out.format("%s\n", urlString);
-            HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(Utils.getUri(urlString))
-                    .version(HttpClient.Version.HTTP_2)
-                    .header("access_token", Utils.getProperty(settingsJsonObject, "access_token"))
-                    .GET()
-                    .build();
-            httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString(), pushPromiseHandler())
-                    .thenAccept(pageResponse -> {
-                        System.out.println("Page response status code: " + pageResponse.statusCode());
-                        System.out.println("Page response headers: " + pageResponse.headers());
-                        String responseBody = pageResponse.body();
-                        System.out.println(responseBody);
-                    })
-                    .join();
-
-
         }
     }
 
@@ -179,12 +222,30 @@ public class CommandLineInterface {
             if ("local".equals(line)) {
                 timeline("public", "&local=true");
             }
-            if ("start".equals(line)) {
+            if ("stream-public".equals(line) ||
+                    "stream-public-local".equals(line) ||
+                    "stream-user".equals(line) ||
+                    "stream-direct".equals(line)) {
                 if (threadStreaming == null) {
                     threadStreaming = new ThreadStreaming();
                     threadStreaming.start();
                 }
-                threadStreaming.streamingStart();
+                String stream = null;
+                if ("stream-public".equals(line)) {
+                    stream = "public";
+                }
+                if ("stream-public-local".equals(line)) {
+                    stream = "public:local";
+                }
+                if ("stream-user".equals(line)) {
+                    stream = "user";
+                }
+                if ("stream-direct".equals(line)) {
+                    stream = "direct";
+                }
+                if (Utils.isNotBlank(stream)) {
+                    threadStreaming.streamingStart(stream);
+                }
             }
             if ("stop".equals(line)) {
                 if (threadStreaming != null) {
@@ -619,33 +680,36 @@ public class CommandLineInterface {
         printJsonElements(jsonArray, null);
     }
 
+    private void printJsonElement(JsonElement jsonElement, String searchString) {
+        jsonArrayAll.add(jsonElement);
+        logger.info(jsonElement.toString());
+        String symbol = Utils.SYMBOL_PENCIL;
+        JsonElement reblogJe = jsonElement.getAsJsonObject().get("reblog");
+        String reblogLabel = "";
+        if (!reblogJe.isJsonNull()) {
+            symbol = Utils.SYMBOL_REPEAT;
+            JsonElement reblogAccountJe = reblogJe.getAsJsonObject().get("account");
+            String reblogAccount = Utils.getProperty(reblogAccountJe, "acct");
+            reblogLabel = yellow(reblogAccount);
+        }
+        JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
+        String acct = Utils.getProperty(accountJe, "acct");
+        String createdAt = Utils.getProperty(jsonElement, "created_at");
+        String text = Jsoup.parse(Utils.getProperty(jsonElement, "content")).text();
+        if (Utils.isNotBlank(searchString)) {
+            String searchStringHighlighted = reverseVideo(searchString);
+            text = text.replaceAll(searchString, searchStringHighlighted);
+        }
+        String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
+        System.out.format("%d %s%s %s %s %s\n", jsonArrayAll.size() - 1, symbol, reblogLabel, dateDisplay, green(acct), text);
+    }
+
     private void printJsonElements(JsonArray jsonArray, String searchString) {
         int i = jsonArray.size() - 1;
         for (; i > -1; i--) {
             JsonElement jsonElement = jsonArray.get(i);
-            jsonArrayAll.add(jsonElement);
-            logger.info(jsonElement.toString());
-            String symbol = Utils.SYMBOL_PENCIL;
-            JsonElement reblogJe = jsonElement.getAsJsonObject().get("reblog");
-            String reblogLabel = "";
-            if (!reblogJe.isJsonNull()) {
-                symbol = Utils.SYMBOL_REPEAT;
-                JsonElement reblogAccountJe = reblogJe.getAsJsonObject().get("account");
-                String reblogAccount = Utils.getProperty(reblogAccountJe, "acct");
-                reblogLabel = yellow(reblogAccount);
-            }
-            JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
-            String acct = Utils.getProperty(accountJe, "acct");
-            String createdAt = Utils.getProperty(jsonElement, "created_at");
-            String text = Jsoup.parse(Utils.getProperty(jsonElement, "content")).text();
-            if (Utils.isNotBlank(searchString)) {
-                String searchStringHighlighted = reverseVideo(searchString);
-                text = text.replaceAll(searchString, searchStringHighlighted);
-            }
-            String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
-            System.out.format("%d %s%s %s %s %s\n", jsonArrayAll.size() - 1, symbol, reblogLabel, dateDisplay, green(acct), text);
+            printJsonElement(jsonElement, searchString);
         }
-        System.out.format("%d items.\n", jsonArray.size());
     }
 
     private String yellow(String s) {

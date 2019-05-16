@@ -48,6 +48,18 @@ quantity
 quit
     Quit Jediverse CLI program.
 
+stream-public
+    Stream public statuses.
+
+stream-public-local
+    Stream local status.
+
+stream-user
+    Stream events that are relevant to the user.
+
+stream-direct
+    Stream direct messages.
+
 timeline or tl
     Show timeline. Successive requests will start with the next status ID.
 
