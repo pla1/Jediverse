@@ -63,7 +63,7 @@ public class CommandLineInterface {
                 if (last) {
                     sb.append(data);
                     JsonElement messageJsonElement = jsonParser.parse(sb.toString());
-                    if (!messageJsonElement.isJsonNull()) {
+                    if (!messageJsonElement.isJsonNull() && Utils.isJsonObject(messageJsonElement)) {
                         String payload = messageJsonElement.getAsJsonObject().get("payload").getAsString();
                         if (Utils.isNotBlank(payload)) {
                             JsonElement payloadJsonElement = jsonParser.parse(payload);
@@ -681,7 +681,7 @@ public class CommandLineInterface {
         String symbol = Utils.SYMBOL_PENCIL;
         JsonElement reblogJe = jsonElement.getAsJsonObject().get("reblog");
         String reblogLabel = "";
-        if (!reblogJe.isJsonNull()) {
+        if (Utils.isJsonObject(reblogJe)) {
             symbol = Utils.SYMBOL_REPEAT;
             JsonElement reblogAccountJe = reblogJe.getAsJsonObject().get("account");
             String reblogAccount = Utils.getProperty(reblogAccountJe, "acct");
