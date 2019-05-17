@@ -63,7 +63,7 @@ public class CommandLineInterface {
                 if (last) {
                     sb.append(data);
                     JsonElement messageJsonElement = jsonParser.parse(sb.toString());
-                    if (!messageJsonElement.isJsonNull() && Utils.isJsonObject(messageJsonElement)) {
+                    if (Utils.isJsonObject(messageJsonElement)) {
                         String payload = messageJsonElement.getAsJsonObject().get("payload").getAsString();
                         if (Utils.isNotBlank(payload)) {
                             JsonElement payloadJsonElement = jsonParser.parse(payload);
@@ -254,9 +254,21 @@ public class CommandLineInterface {
             if ("notifications".equals(line) || "note".equals(line)) {
                 notifications("");
             }
+            if (words.length > 1 && "toot-direct".equals(words[0])) {
+                String text = line.substring(5);
+                toot(text, null, "direct");
+            }
             if (words.length > 1 && "toot".equals(words[0])) {
                 String text = line.substring(5);
-                toot(text, null);
+                toot(text, null, "public");
+            }
+            if (words.length > 1 && "toot-private".equals(words[0])) {
+                String text = line.substring(5);
+                toot(text, null, "private");
+            }
+            if (words.length > 1 && "toot-unlisted".equals(words[0])) {
+                String text = line.substring(5);
+                toot(text, null, "unlisted");
             }
             if (words.length > 2 && ("rep".equals(words[0]) || "reply".equals(words[0]))) {
                 if (Utils.isNumeric(words[1])) {
@@ -266,7 +278,8 @@ public class CommandLineInterface {
                     } else {
                         JsonElement jsonElement = jsonArrayAll.get(index);
                         String text = line.substring(line.indexOf(words[1]) + words[1].length());
-                        toot(text, Utils.getProperty(jsonElement, "id"));
+                        // TODO: 5/17/19  Get visibility from jsonElement to set the proper visibility on the reply.
+                        toot(text, Utils.getProperty(jsonElement, "id"), "unlisted");
                     }
                 }
 
@@ -537,11 +550,11 @@ public class CommandLineInterface {
         return jsonArray;
     }
 
-    private void toot(String text, String inReplyToId) {
+    private void toot(String text, String inReplyToId, String visibility) {
         String urlString = String.format("https://%s/api/v1/statuses", Utils.getProperty(settingsJsonObject, "instance"));
         JsonObject params = new JsonObject();
         params.addProperty("status", text);
-        params.addProperty("visibility", "direct");
+        params.addProperty("visibility", visibility);
         if (Utils.isNotBlank(inReplyToId)) {
             params.addProperty("in_reply_to_id", inReplyToId);
         }
@@ -688,9 +701,16 @@ public class CommandLineInterface {
             reblogLabel = yellow(reblogAccount);
         }
         JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
+        if (!Utils.isJsonObject(accountJe)) {
+            return;
+        }
         String acct = Utils.getProperty(accountJe, "acct");
         String createdAt = Utils.getProperty(jsonElement, "created_at");
-        String text = Jsoup.parse(Utils.getProperty(jsonElement, "content")).text();
+        String content = Utils.getProperty(jsonElement, "content");
+        String text = "";
+        if (Utils.isNotBlank(content)) {
+             text = Jsoup.parse(content).text();
+        }
         if (Utils.isNotBlank(searchString)) {
             String searchStringHighlighted = reverseVideo(searchString);
             text = text.replaceAll(searchString, searchStringHighlighted);
