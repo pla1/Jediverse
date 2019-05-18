@@ -3,6 +3,9 @@ Commands:
 aa
     Add account to this program.
 
+audio
+    Set the audio file used for a notification bell. The default is ding.wav. Set it to "none" to disable.
+
 fav
     Favorite a status. Pass the status index.
 

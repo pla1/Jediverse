@@ -415,7 +415,7 @@ public class CommandLineInterface {
 
     private void updateAudioFileNameSettings(String audioFileName) {
         File file = new File(audioFileName);
-        if (!file.exists()) {
+        if (!"none".equalsIgnoreCase(audioFileName) && !file.exists()) {
             System.out.format("Audio file %s not found.\n", audioFileName);
             return;
         }
