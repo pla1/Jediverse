@@ -4,6 +4,9 @@ import com.google.gson.*;
 import org.jsoup.Jsoup;
 
 import javax.net.ssl.HttpsURLConnection;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import java.io.*;
 import java.net.URI;
 import java.net.URL;
@@ -22,113 +25,48 @@ import java.util.regex.Pattern;
 
 public class CommandLineInterface {
     private static BufferedReader console;
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private final int DEFAULT_QUANTITY = 20;
     private JsonObject settingsJsonObject;
     private JsonArray jsonArrayAll = new JsonArray();
     private Logger logger;
-    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private ThreadStreaming threadStreaming;
-    private final int DEFAULT_QUANTITY = 20;
     private JsonArray jsonArrayFollowing = new JsonArray();
 
-    private class ThreadStreaming extends Thread {
-        private WebSocket webSocket;
-
-        public void streamingStart(String stream) {
-            var client = HttpClient.newHttpClient();
-            String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
-                    Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
-            webSocket = client.newWebSocketBuilder()
-                    .buildAsync(URI.create(urlString), wsListener).join();
-        }
-
-        public void streamingStop() {
-            if (webSocket != null) {
-                webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "ok");
-            }
-        }
-
-        public ThreadStreaming() {
-            this.setDaemon(true);
-        }
-
-        WebSocket.Listener wsListener = new WebSocket.Listener() {
-            private StringBuilder sb = new StringBuilder();
-            private Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            private JsonParser jsonParser = new JsonParser();
-
-            @Override
-            public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-                logger.info(String.format("onText Last: %s Data: %s", last, data));
-                //      System.out.format("onText Last: %s Data: %s\n", last, data);
-                if (last) {
-                    sb.append(data);
-                    JsonElement messageJsonElement = jsonParser.parse(sb.toString());
-                    if (Utils.isJsonObject(messageJsonElement)) {
-                        String payload = messageJsonElement.getAsJsonObject().get("payload").getAsString();
-                        if (Utils.isNotBlank(payload)) {
-                            JsonElement payloadJsonElement = jsonParser.parse(payload);
-                            if (Utils.isJsonObject(payloadJsonElement)) {
-                                printJsonElement(payloadJsonElement, null);
-                            }
-                        } else {
-                            System.out.format("Payload is blank.\n");
-                        }
-                    } else {
-                     //   System.out.format("JSON element is null.\n");
-                    }
-                    sb = new StringBuilder();
-                } else {
-                    sb.append(data);
-                }
-                return WebSocket.Listener.super.onText(webSocket, data, last);
-            }
-
-            @Override
-            public CompletionStage<?> onPing(WebSocket webSocket, ByteBuffer message) {
-                String.format("onPing Message: %s\n", message);
-                return WebSocket.Listener.super.onPing(webSocket, message);
-            }
-
-            @Override
-            public CompletionStage<?> onPong(WebSocket webSocket, ByteBuffer message) {
-                String.format("onPong Message: %s\n", message);
-                return WebSocket.Listener.super.onPong(webSocket, message);
-            }
-
-            @Override
-            public void onOpen(WebSocket webSocket) {
-                System.out.println("Websocket opened.");
-                WebSocket.Listener.super.onOpen(webSocket);
-            }
-
-            @Override
-            public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-                System.out.println("onClose: " + statusCode + " " + reason);
-                return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
-            }
-
-            @Override
-            public void onError(WebSocket webSocket, Throwable error) {
-                System.out.format("Websocket error: %s.\n", error.getLocalizedMessage());
-                error.printStackTrace();
-            }
-
-            @Override
-            public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
-                System.out.format("Binary data received on websocket.\n");
-                return WebSocket.Listener.super.onBinary(webSocket, data, last);
-            }
-        };
-
-
-        @Override
-        public void run() {
+    private CommandLineInterface() {
+        setup();
+        try {
+            mainRoutine();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     public static void main(String[] args) {
         new CommandLineInterface();
         System.exit(0);
+    }
+
+    private void playAudio() {
+        String audioFileName = getAudioFileName();
+        if ("none".equalsIgnoreCase(audioFileName)) {
+            return;
+        }
+        AudioInputStream audioInputStream = null;
+        Clip clip = null;
+        try {
+            File file = new File(audioFileName).getAbsoluteFile();
+        //    System.out.format("Audio file: %s\n", file.getAbsolutePath());
+            audioInputStream = AudioSystem.getAudioInputStream(file);
+            clip = AudioSystem.getClip();
+            clip.open(audioInputStream);
+            clip.start();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            Utils.close(clip, audioInputStream);
+        }
     }
 
     private void setup() {
@@ -149,7 +87,14 @@ public class CommandLineInterface {
         }
         System.out.format("Using instance: %s\n", settingsJsonObject.get("instance"));
     }
-
+    private String getAudioFileName() {
+        String audioFileName = Utils.getProperty(settingsJsonObject, "audioFileName");
+        if (Utils.isBlank(audioFileName)) {
+            return "ding.wav";
+        } else {
+            return audioFileName;
+        }
+    }
     private int getQuantity() {
         int quantity = Utils.getInt(Utils.getProperty(settingsJsonObject, "quantity"));
         if (quantity == 0) {
@@ -203,6 +148,9 @@ public class CommandLineInterface {
             if ("quantity".equals(words[0]) && words.length == 2 && Utils.isNumeric(words[1])) {
                 int qty = Utils.getInt(words[1]);
                 updateQuantitySettings(qty);
+            }
+            if ("audio".equals(words[0]) && words.length == 2) {
+                updateAudioFileNameSettings(words[1]);
             }
             if ("aa".equals(line)) {
                 createApp();
@@ -402,7 +350,7 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/accounts/%s/following?limit=40", Utils.getProperty(settingsJsonObject, "instance"), id);
         URL url = Utils.getUrl(urlString);
         while (url != null) {
-            HttpsURLConnection urlConnection = null;
+            HttpsURLConnection urlConnection;
             try {
                 urlConnection = (HttpsURLConnection) url.openConnection();
                 String authorization = String.format("Bearer %s", settingsJsonObject.get("access_token").getAsString());
@@ -443,8 +391,7 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/lists", Utils.getProperty(settingsJsonObject, "instance"));
         JsonObject params = new JsonObject();
         params.addProperty("title", title);
-        JsonElement jsonElement = postAsJson(Utils.getUrl(urlString), params.toString());
-        return jsonElement;
+        return postAsJson(Utils.getUrl(urlString), params.toString());
     }
 
     private void updateQuantitySettings(int quantity) {
@@ -465,13 +412,23 @@ public class CommandLineInterface {
         }
     }
 
-    public CommandLineInterface() {
-        setup();
-        try {
-            mainRoutine();
-        } catch (Exception e) {
-            e.printStackTrace();
+    private void updateAudioFileNameSettings(String audioFileName) {
+        File file = new File(audioFileName);
+        if (!file.exists()) {
+            System.out.format("Audio file %s not found.\n", audioFileName);
+            return;
         }
+        settingsJsonObject.addProperty("audioFileName", audioFileName);
+        JsonArray settingsJsonArray = getSettingsJsonArray();
+        for (JsonElement jsonElement : settingsJsonArray) {
+            if (Utils.getProperty(jsonElement, "id").equals(Utils.getProperty(settingsJsonObject, "id"))) {
+                jsonElement.getAsJsonObject().addProperty("audioFileName", audioFileName);
+            }
+        }
+        String pretty = gson.toJson(settingsJsonArray);
+        Utils.write(getSettingsFileName(), pretty);
+        System.out.format("Audio file name now set to %s and settings saved for instance: %s\n",
+                audioFileName, Utils.getProperty(settingsJsonObject, "instance"));
     }
 
     private JsonObject chooseInstance(JsonArray settingsJsonArray) {
@@ -522,7 +479,6 @@ public class CommandLineInterface {
             }
         } else {
             System.out.println("Account not deleted.");
-            return;
         }
     }
 
@@ -674,7 +630,7 @@ public class CommandLineInterface {
     }
 
     private void timeline(String timeline, String extra) {
-        String sinceId = null;
+        String sinceId;
         String sinceIdFragment = "";
         if (jsonArrayAll.size() > 0) {
             JsonElement last = jsonArrayAll.get(jsonArrayAll.size() - 1);
@@ -709,7 +665,7 @@ public class CommandLineInterface {
         String content = Utils.getProperty(jsonElement, "content");
         String text = "";
         if (Utils.isNotBlank(content)) {
-             text = Jsoup.parse(content).text();
+            text = Jsoup.parse(content).text();
         }
         if (Utils.isNotBlank(searchString)) {
             String searchStringHighlighted = reverseVideo(searchString);
@@ -779,7 +735,7 @@ public class CommandLineInterface {
 
     private JsonArray getJsonArray(String urlString) {
         URL url = Utils.getUrl(urlString);
-        HttpsURLConnection urlConnection = null;
+        HttpsURLConnection urlConnection;
         try {
             urlConnection = (HttpsURLConnection) url.openConnection();
             String authorization = String.format("Bearer %s", settingsJsonObject.get("access_token").getAsString());
@@ -795,7 +751,7 @@ public class CommandLineInterface {
 
     private JsonElement getJsonElement(String urlString) {
         URL url = Utils.getUrl(urlString);
-        HttpsURLConnection urlConnection = null;
+        HttpsURLConnection urlConnection;
         try {
             urlConnection = (HttpsURLConnection) url.openConnection();
             String authorization = String.format("Bearer %s", settingsJsonObject.get("access_token").getAsString());
@@ -904,7 +860,101 @@ public class CommandLineInterface {
 
     private JsonElement whoami() {
         String urlString = String.format("https://%s/api/v1/accounts/verify_credentials", Utils.getProperty(settingsJsonObject, "instance"));
-        JsonElement jsonElement = getJsonElement(urlString);
-        return jsonElement;
+        return getJsonElement(urlString);
+    }
+
+    private class ThreadStreaming extends Thread {
+        WebSocket.Listener wsListener = new WebSocket.Listener() {
+            private StringBuilder sb = new StringBuilder();
+            private Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            private JsonParser jsonParser = new JsonParser();
+
+            @Override
+            public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
+                logger.info(String.format("onText Last: %s Data: %s", last, data));
+                //      System.out.format("onText Last: %s Data: %s\n", last, data);
+                if (last) {
+                    sb.append(data);
+                    JsonElement messageJsonElement = jsonParser.parse(sb.toString());
+                    if (Utils.isJsonObject(messageJsonElement)) {
+                        String payload = messageJsonElement.getAsJsonObject().get("payload").getAsString();
+                        if (Utils.isNotBlank(payload)) {
+                            JsonElement payloadJsonElement = jsonParser.parse(payload);
+                            if (Utils.isJsonObject(payloadJsonElement)) {
+                                playAudio();
+                                printJsonElement(payloadJsonElement, null);
+                            }
+                        } else {
+                            System.out.format("Payload is blank.\n");
+                        }
+                    } else {
+                        //   System.out.format("JSON element is null.\n");
+                    }
+                    sb = new StringBuilder();
+                } else {
+                    sb.append(data);
+                }
+                return WebSocket.Listener.super.onText(webSocket, data, last);
+            }
+
+            @Override
+            public CompletionStage<?> onPing(WebSocket webSocket, ByteBuffer message) {
+                System.out.format("onPing Message: %s\n", message);
+                return WebSocket.Listener.super.onPing(webSocket, message);
+            }
+
+            @Override
+            public CompletionStage<?> onPong(WebSocket webSocket, ByteBuffer message) {
+                System.out.format("onPong Message: %s\n", message);
+                return WebSocket.Listener.super.onPong(webSocket, message);
+            }
+
+            @Override
+            public void onOpen(WebSocket webSocket) {
+                System.out.println("Websocket opened.");
+                WebSocket.Listener.super.onOpen(webSocket);
+            }
+
+            @Override
+            public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
+                System.out.println("onClose: " + statusCode + " " + reason);
+                return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
+            }
+
+            @Override
+            public void onError(WebSocket webSocket, Throwable error) {
+                System.out.format("Websocket error: %s.\n", error.getLocalizedMessage());
+                error.printStackTrace();
+            }
+
+            @Override
+            public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
+                System.out.format("Binary data received on websocket.\n");
+                return WebSocket.Listener.super.onBinary(webSocket, data, last);
+            }
+        };
+        private WebSocket webSocket;
+
+        private ThreadStreaming() {
+            this.setDaemon(true);
+        }
+
+        private void streamingStart(String stream) {
+            var client = HttpClient.newHttpClient();
+            String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
+                    Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
+            webSocket = client.newWebSocketBuilder()
+                    .buildAsync(URI.create(urlString), wsListener).join();
+        }
+
+        private void streamingStop() {
+            if (webSocket != null) {
+                webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "ok");
+            }
+        }
+
+        @Override
+        public void run() {
+        }
     }
 }

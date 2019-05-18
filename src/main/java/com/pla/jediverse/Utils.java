@@ -4,8 +4,11 @@ package com.pla.jediverse;
 import com.google.common.io.BaseEncoding;
 import com.google.gson.*;
 
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.Clip;
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -59,23 +62,11 @@ public class Utils {
     }
 
     public static boolean isBlank(String s) {
-        if (s == null) {
-            return true;
-        }
-        if (s.trim().length() == 0) {
-            return true;
-        }
-        return false;
+        return (s == null || s.trim().length() == 0);
     }
 
     public static String urlEncodeComponent(String s) {
-        try {
-            return URLEncoder.encode(s, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-            return null;
-        }
-
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 
     public static void main(String[] args) {
@@ -90,7 +81,7 @@ public class Utils {
     public static void write(String outputFileName, String text) {
         PrintWriter pw = null;
         try {
-            pw = new PrintWriter(outputFileName, "UTF-8");
+            pw = new PrintWriter(outputFileName, StandardCharsets.UTF_8);
             pw.write(text);
         } catch (IOException e) {
             e.printStackTrace();
@@ -152,6 +143,16 @@ public class Utils {
             if (object != null) {
                 try {
                     boolean closed = false;
+                    if (object instanceof AudioInputStream) {
+                        AudioInputStream audioInputStream = (AudioInputStream) object;
+                        audioInputStream.close();
+                        closed = true;
+                    }
+                    if (object instanceof Clip) {
+                        Clip clip = (Clip) object;
+                        clip.close();
+                        closed = true;
+                    }
                     if (object instanceof java.io.BufferedOutputStream) {
                         BufferedOutputStream bufferedOutputStream = (BufferedOutputStream) object;
                         bufferedOutputStream.close();
@@ -285,7 +286,7 @@ public class Utils {
             String[] strings = (String[]) object;
             int i = 0;
             for (String string : strings) {
-                System.out.format("%d:%d", i++, string);
+                System.out.format("%d:%s", i++, string);
             }
         }
     }
@@ -321,9 +322,7 @@ public class Utils {
             logger.addHandler(fh);
             SimpleFormatter formatter = new SimpleFormatter();
             fh.setFormatter(formatter);
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (SecurityException|IOException e) {
             e.printStackTrace();
         }
         return logger;
@@ -345,14 +344,15 @@ public class Utils {
             Runtime runtime = Runtime.getRuntime();
             Process process = runtime.exec(commandParts);
             reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String lineRead = null;
+            String lineRead;
             while ((lineRead = reader.readLine()) != null) {
                 output.append(lineRead);
                 output.append("\n");
             }
             int exitValue = process.waitFor();
         } catch (Exception e) {
-            output.append("Exception: " + e.getLocalizedMessage());
+            output.append("Exception: ");
+            output.append(e.getLocalizedMessage());
         } finally {
             close(reader);
         }
@@ -387,7 +387,7 @@ public class Utils {
         }
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         buf.append(" a");
         if (calendar.get(Calendar.SECOND) != 0) {
             buf.insert(0, ":ss");
@@ -418,11 +418,8 @@ public class Utils {
         Calendar calendar2 = Calendar.getInstance();
         calendar1.setTime(date1);
         calendar2.setTime(date2);
-        if (calendar1.get(Calendar.YEAR) == calendar2.get(Calendar.YEAR)) {
-            return true;
-        } else {
-            return false;
-        }
+        return (calendar1.get(Calendar.YEAR) == calendar2.get(Calendar.YEAR));
+
     }
 
     public static Date getMidnight() {
