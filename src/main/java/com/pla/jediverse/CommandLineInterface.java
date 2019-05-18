@@ -64,9 +64,10 @@ public class CommandLineInterface {
 
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            Utils.close(clip, audioInputStream);
         }
+        //finally {
+      //      Utils.close(clip, audioInputStream);
+     //   }
     }
 
     private void setup() {
