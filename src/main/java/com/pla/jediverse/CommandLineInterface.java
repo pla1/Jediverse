@@ -200,9 +200,7 @@ public class CommandLineInterface {
                     (words[0].equals("stream-hashtag") && words.length == 2) ||
                     "stream-user".equals(line) ||
                     "stream-direct".equals(line)) {
-                ThreadStreaming threadStreaming = new ThreadStreaming();
-                threadStreaming.start();
-                threads.add(threadStreaming);
+
                 String stream = null;
                 if ("stream-public".equals(line)) {
                     stream = "public";
@@ -223,12 +221,14 @@ public class CommandLineInterface {
                     stream = String.format("hashtag&tag=%s", Utils.urlEncodeComponent(words[1]));
                 }
                 if (Utils.isNotBlank(stream)) {
-                    threadStreaming.streamingStart(stream);
+                    ThreadStreaming threadStreaming = new ThreadStreaming(stream);
+                    threadStreaming.start();
+                    threads.add(threadStreaming);
                 }
             }
             if ("stop".equals(line)) {
-                for (ThreadStreaming thread:threads) {
-                    if (thread!= null) {
+                for (ThreadStreaming thread : threads) {
+                    if (thread != null) {
                         thread.streamingStop();
                     }
                 }
@@ -240,7 +240,7 @@ public class CommandLineInterface {
                 notifications("");
             }
             if (words.length > 1 && "toot-direct".equals(words[0])) {
-                String text = line.substring(5);
+                String text = line.substring(12);
                 toot(text, null, "direct");
             }
             if (words.length > 1 && "toot".equals(words[0])) {
@@ -985,18 +985,14 @@ public class CommandLineInterface {
             }
         };
         private WebSocket webSocket;
+        private String stream;
 
-        private ThreadStreaming() {
+        private ThreadStreaming(String stream) {
+            super(stream);
             this.setDaemon(true);
+            this.stream = stream;
         }
 
-        private void streamingStart(String stream) {
-            var client = HttpClient.newHttpClient();
-            String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
-                    Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
-            //   System.out.println(urlString);
-            webSocket = client.newWebSocketBuilder().buildAsync(URI.create(urlString), wsListener).join();
-        }
 
         private void streamingStop() {
             if (webSocket != null) {
@@ -1006,6 +1002,11 @@ public class CommandLineInterface {
 
         @Override
         public void run() {
+            var client = HttpClient.newHttpClient();
+            String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
+                    Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
+            //   System.out.println(urlString);
+            webSocket = client.newWebSocketBuilder().buildAsync(URI.create(urlString), wsListener).join();
         }
     }
 
