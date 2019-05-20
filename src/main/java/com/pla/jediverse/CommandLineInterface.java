@@ -551,6 +551,7 @@ public class CommandLineInterface {
         }
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
         System.out.format("Tooted: %s\n", jsonObject.get("url").getAsString());
+        mediaArrayList.clear();
     }
 
     private void createApp() {
