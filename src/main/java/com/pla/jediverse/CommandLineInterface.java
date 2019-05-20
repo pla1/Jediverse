@@ -367,7 +367,7 @@ public class CommandLineInterface {
         JsonObject params = new JsonObject();
         params.add("account_ids", arrayOfIds);
         JsonElement jsonElement = postAsJson(Utils.getUrl(urlString), params.toString());
-        System.out.format("RESPONSE: %s\n", jsonElement.toString());
+  //      System.out.format("RESPONSE: %s\n", jsonElement.toString());
     }
 
     private void following() {
@@ -391,13 +391,13 @@ public class CommandLineInterface {
                 System.out.format("Added %d accounts. Total: %d\n", jsonArray.size(), jsonArrayFollowing.size());
                 url = null;
                 if (Utils.isNotBlank(linkHeader)) {
-                    System.out.format("Link header: %s\n", linkHeader);
+              //      System.out.format("Link header: %s\n", linkHeader);
                     Pattern pattern = Pattern.compile("<([^>]+)>;\\s+rel=\"([^\"]+)\"");
                     Matcher matcher = pattern.matcher(linkHeader);
                     while (matcher.find()) {
                         urlString = matcher.group(1);
                         String rel = matcher.group(2);
-                        System.out.format("URL: %s REL: %s\n", urlString, rel);
+                   //     System.out.format("URL: %s REL: %s\n", urlString, rel);
                         if ("next".equals(rel)) {
                             url = Utils.getUrl(urlString);
                         }
