@@ -1,20 +1,31 @@
 package com.pla.jediverse;
 
+import com.google.common.io.Resources;
 import com.google.gson.*;
+import com.google.gson.stream.JsonReader;
 import org.jsoup.Jsoup;
-
 import javax.net.ssl.HttpsURLConnection;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import java.io.*;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
-import java.util.Date;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.*;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,7 +67,7 @@ public class CommandLineInterface {
         Clip clip = null;
         try {
             File file = new File(audioFileName).getAbsoluteFile();
-        //    System.out.format("Audio file: %s\n", file.getAbsolutePath());
+            //    System.out.format("Audio file: %s\n", file.getAbsolutePath());
             audioInputStream = AudioSystem.getAudioInputStream(file);
             clip = AudioSystem.getClip();
             clip.open(audioInputStream);
@@ -66,8 +77,8 @@ public class CommandLineInterface {
             e.printStackTrace();
         }
         //finally {
-      //      Utils.close(clip, audioInputStream);
-     //   }
+        //      Utils.close(clip, audioInputStream);
+        //   }
     }
 
     private void setup() {
@@ -88,6 +99,7 @@ public class CommandLineInterface {
         }
         System.out.format("Using instance: %s\n", settingsJsonObject.get("instance"));
     }
+
     private String getAudioFileName() {
         String audioFileName = Utils.getProperty(settingsJsonObject, "audioFileName");
         if (Utils.isBlank(audioFileName)) {
@@ -96,6 +108,7 @@ public class CommandLineInterface {
             return audioFileName;
         }
     }
+
     private int getQuantity() {
         int quantity = Utils.getInt(Utils.getProperty(settingsJsonObject, "quantity"));
         if (quantity == 0) {
@@ -107,11 +120,20 @@ public class CommandLineInterface {
     private void mainRoutine() throws Exception {
         String line;
         while ((line = console.readLine()) != null) {
-            //     System.out.println(line);
             line = line.trim();
+            if (Utils.isBlank(line)) {
+                continue;
+            }
             String[] words = line.split("\\s+");
             if (line.startsWith("search") && words.length > 1) {
                 search(line);
+            }
+            if (line.startsWith("upload") && words.length > 1) {
+                try {
+                    upload(line);
+                } catch(Exception e) {
+                    e.printStackTrace();
+                }
             }
             if ("following".equals(line)) {
                 following();
@@ -958,4 +980,149 @@ public class CommandLineInterface {
         public void run() {
         }
     }
+
+    private void uploadMediaOld(String line) {
+        // https://stackoverflow.com/questions/46392160/java-9-httpclient-send-a-multipart-form-data-request
+      //  String urlString = String.format("https://%s/api/v1/media", Utils.getProperty(settingsJsonObject, "instance"));
+        String urlString = String.format("https://%s/api/v1/media?access_token=%s",
+                Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
+        System.out.println(urlString);
+        String fileName = line.substring(7);
+        File file = new File(fileName);
+        if (!file.exists()) {
+            System.out.format("File: \"%s\" does not exist.\n", fileName);
+            return;
+        }
+        InputStream inputStream = this.getClass().getResourceAsStream(fileName);
+        String contentType = null;
+        try {
+             contentType = Files.probeContentType(file.toPath());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        MultiPartBodyPublisher publisher = new MultiPartBodyPublisher()
+                .addPart("file", () -> inputStream, file.getName(), contentType);
+
+        //// TODO: 5/19/19
+  //      urlString = "https://postman-echo.com/post";
+        System.out.format("Content length: %d\n", publisher.build().contentLength());
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(urlString))
+                .header("Content-Type", "multipart/form-data; boundary=" + publisher.getBoundary())
+                .timeout(Duration.ofMinutes(1))
+                .POST(publisher.build())
+                .build();
+        HttpClient httpClient = HttpClient.newHttpClient();
+        try {
+            HttpResponse httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            Object body = httpResponse.body();
+            System.out.format("Body: %s\n", body);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    // TODO: 5/19/19 NEW stuff
+
+
+    private void upload(String line) throws Exception {
+        String urlString = String.format("https://%s/api/v1/media?access_token=%s",
+                Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
+        System.out.println(urlString);
+        String fileName = line.substring(7);
+        File file = new File(fileName);
+        if (!file.exists()) {
+            System.out.format("File: \"%s\" does not exist.\n", fileName);
+            return;
+        }
+        var client = HttpClient.newBuilder().build();
+        var request = HttpRequest.newBuilder().GET().uri(URI.create(urlString)).build();
+
+        HttpResponse<Path> response = client.send(request, HttpResponse.BodyHandlers.ofFile(file.toPath()));
+        System.out.println(response);
+
+
+        Map<Object, Object> data = new LinkedHashMap<>();
+        data.put("access_token", Utils.getProperty(settingsJsonObject, "access_token"));
+        data.put("file", file.getAbsolutePath());
+        String boundary = new BigInteger(256, new Random()).toString();
+
+        request = HttpRequest.newBuilder()
+                .header("Content-Type", "multipart/form-data;boundary=" + boundary)
+                .POST(ofMimeMultipartData(data, boundary))
+                .uri(URI.create(urlString))
+                .build();
+
+        HttpResponse<String> vtResponse = client.send(request, HttpResponse.BodyHandlers.ofString());
+        /*
+        try (JsonReader jsonReader = Json.createReader(new StringReader(vtResponse.body()))) {
+            JsonObject jobj = jsonReader.readObject();
+            String resource = jobj.getString("resource");
+            URI uri = UrlBuilder.fromString("https://www.virustotal.com/vtapi/v2/file/report")
+                    .addParameter("apikey", virusTotalApiKey).addParameter("resource", resource)
+                    .toUri();
+
+            HttpResponse<String> status = client.send(HttpRequest.newBuilder(uri).build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            System.out.println(status.body());
+        }
+
+         */
+
+    }
+    public static HttpRequest.BodyPublisher ofMimeMultipartData(Map<Object, Object> data,
+                                                                String boundary) throws IOException {
+        var byteArrays = new ArrayList<byte[]>();
+        byte[] separator = ("--" + boundary + "\r\nContent-Disposition: form-data; name=")
+                .getBytes(StandardCharsets.UTF_8);
+        for (Map.Entry<Object, Object> entry : data.entrySet()) {
+            byteArrays.add(separator);
+
+            if (entry.getValue() instanceof Path) {
+                var path = (Path) entry.getValue();
+                String mimeType = Files.probeContentType(path);
+                byteArrays.add(("\"" + entry.getKey() + "\"; filename=\"" + path.getFileName()
+                        + "\"\r\nContent-Type: " + mimeType + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                byteArrays.add(Files.readAllBytes(path));
+                byteArrays.add("\r\n".getBytes(StandardCharsets.UTF_8));
+            }
+            else {
+                byteArrays.add(("\"" + entry.getKey() + "\"\r\n\r\n" + entry.getValue() + "\r\n")
+                        .getBytes(StandardCharsets.UTF_8));
+            }
+        }
+        byteArrays.add(("--" + boundary + "--").getBytes(StandardCharsets.UTF_8));
+        return HttpRequest.BodyPublishers.ofByteArrays(byteArrays);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
