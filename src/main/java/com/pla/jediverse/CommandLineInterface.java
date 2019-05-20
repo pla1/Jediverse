@@ -4,6 +4,7 @@ import com.google.common.io.Resources;
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 import org.jsoup.Jsoup;
+
 import javax.net.ssl.HttpsURLConnection;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -43,6 +44,7 @@ public class CommandLineInterface {
     private Logger logger;
     private ThreadStreaming threadStreaming;
     private JsonArray jsonArrayFollowing = new JsonArray();
+    private ArrayList<JsonElement> mediaArrayList = new ArrayList<>();
 
     private CommandLineInterface() {
         setup();
@@ -131,9 +133,12 @@ public class CommandLineInterface {
             if (line.startsWith("upload") && words.length > 1) {
                 try {
                     upload(line);
-                } catch(Exception e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
+            }
+            if ("upload-clear".equals(words[0])) {
+                clearMediaArrayList();
             }
             if ("following".equals(line)) {
                 following();
@@ -534,6 +539,13 @@ public class CommandLineInterface {
         JsonObject params = new JsonObject();
         params.addProperty("status", text);
         params.addProperty("visibility", visibility);
+        if (!mediaArrayList.isEmpty()) {
+            JsonArray jsonArray = new JsonArray();
+            for (JsonElement jsonElement : mediaArrayList) {
+                jsonArray.add(Utils.getProperty(jsonElement, "id"));
+            }
+            params.add("media_ids", jsonArray);
+        }
         if (Utils.isNotBlank(inReplyToId)) {
             params.addProperty("in_reply_to_id", inReplyToId);
         }
@@ -981,54 +993,8 @@ public class CommandLineInterface {
         }
     }
 
-    private void uploadMediaOld(String line) {
-        // https://stackoverflow.com/questions/46392160/java-9-httpclient-send-a-multipart-form-data-request
-      //  String urlString = String.format("https://%s/api/v1/media", Utils.getProperty(settingsJsonObject, "instance"));
-        String urlString = String.format("https://%s/api/v1/media?access_token=%s",
-                Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
-        System.out.println(urlString);
-        String fileName = line.substring(7);
-        File file = new File(fileName);
-        if (!file.exists()) {
-            System.out.format("File: \"%s\" does not exist.\n", fileName);
-            return;
-        }
-        InputStream inputStream = this.getClass().getResourceAsStream(fileName);
-        String contentType = null;
-        try {
-             contentType = Files.probeContentType(file.toPath());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        MultiPartBodyPublisher publisher = new MultiPartBodyPublisher()
-                .addPart("file", () -> inputStream, file.getName(), contentType);
-
-        //// TODO: 5/19/19
-  //      urlString = "https://postman-echo.com/post";
-        System.out.format("Content length: %d\n", publisher.build().contentLength());
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(urlString))
-                .header("Content-Type", "multipart/form-data; boundary=" + publisher.getBoundary())
-                .timeout(Duration.ofMinutes(1))
-                .POST(publisher.build())
-                .build();
-        HttpClient httpClient = HttpClient.newHttpClient();
-        try {
-            HttpResponse httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            Object body = httpResponse.body();
-            System.out.format("Body: %s\n", body);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    // TODO: 5/19/19 NEW stuff
-
-
     private void upload(String line) throws Exception {
-        String urlString = String.format("https://%s/api/v1/media?access_token=%s",
-                Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(settingsJsonObject, "access_token"));
+        String urlString = String.format("https://%s/api/v1/media", Utils.getProperty(settingsJsonObject, "instance"));
         System.out.println(urlString);
         String fileName = line.substring(7);
         File file = new File(fileName);
@@ -1037,41 +1003,28 @@ public class CommandLineInterface {
             return;
         }
         var client = HttpClient.newBuilder().build();
-        var request = HttpRequest.newBuilder().GET().uri(URI.create(urlString)).build();
-
-        HttpResponse<Path> response = client.send(request, HttpResponse.BodyHandlers.ofFile(file.toPath()));
-        System.out.println(response);
-
 
         Map<Object, Object> data = new LinkedHashMap<>();
         data.put("access_token", Utils.getProperty(settingsJsonObject, "access_token"));
-        data.put("file", file.getAbsolutePath());
+        data.put("description", String.format("%s %s", this.getClass().getName(), new Date()));
+        data.put("file", Paths.get(fileName));
         String boundary = new BigInteger(256, new Random()).toString();
 
-        request = HttpRequest.newBuilder()
+        var request = HttpRequest.newBuilder()
                 .header("Content-Type", "multipart/form-data;boundary=" + boundary)
                 .POST(ofMimeMultipartData(data, boundary))
                 .uri(URI.create(urlString))
                 .build();
 
-        HttpResponse<String> vtResponse = client.send(request, HttpResponse.BodyHandlers.ofString());
-        /*
-        try (JsonReader jsonReader = Json.createReader(new StringReader(vtResponse.body()))) {
-            JsonObject jobj = jsonReader.readObject();
-            String resource = jobj.getString("resource");
-            URI uri = UrlBuilder.fromString("https://www.virustotal.com/vtapi/v2/file/report")
-                    .addParameter("apikey", virusTotalApiKey).addParameter("resource", resource)
-                    .toUri();
-
-            HttpResponse<String> status = client.send(HttpRequest.newBuilder(uri).build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            System.out.println(status.body());
-        }
-
-         */
-
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        //   System.out.format("%s\n", response.body());
+        JsonParser jsonParser = new JsonParser();
+        JsonElement jsonElement = jsonParser.parse(response.body());
+        mediaArrayList.add(jsonElement);
+        System.out.format("File %s uploaded as ID %s. You have %d file(s) that will be attached to your next toot.\n",
+                fileName, Utils.getProperty(jsonElement, "id"), mediaArrayList.size());
     }
+
     public static HttpRequest.BodyPublisher ofMimeMultipartData(Map<Object, Object> data,
                                                                 String boundary) throws IOException {
         var byteArrays = new ArrayList<byte[]>();
@@ -1079,50 +1032,33 @@ public class CommandLineInterface {
                 .getBytes(StandardCharsets.UTF_8);
         for (Map.Entry<Object, Object> entry : data.entrySet()) {
             byteArrays.add(separator);
-
             if (entry.getValue() instanceof Path) {
                 var path = (Path) entry.getValue();
                 String mimeType = Files.probeContentType(path);
                 byteArrays.add(("\"" + entry.getKey() + "\"; filename=\"" + path.getFileName()
                         + "\"\r\nContent-Type: " + mimeType + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
-                byteArrays.add(Files.readAllBytes(path));
+                byte[] fileBytes = Files.readAllBytes(path);
+                //      System.out.format("Files.readAllBytes %d length.\n%s", fileBytes.length, new String(fileBytes));
+                byteArrays.add(fileBytes);
                 byteArrays.add("\r\n".getBytes(StandardCharsets.UTF_8));
-            }
-            else {
+            } else {
                 byteArrays.add(("\"" + entry.getKey() + "\"\r\n\r\n" + entry.getValue() + "\r\n")
                         .getBytes(StandardCharsets.UTF_8));
             }
         }
         byteArrays.add(("--" + boundary + "--").getBytes(StandardCharsets.UTF_8));
+        //      for (byte[] bytes:byteArrays) {
+        //          System.out.format("%s\n", new String(bytes));
+        //      }
         return HttpRequest.BodyPublishers.ofByteArrays(byteArrays);
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   private void clearMediaArrayList() {
+        if (mediaArrayList.isEmpty()) {
+            System.out.format("There aren't any uploaded media files in the queue. ");
+        } else {
+            System.out.format("%d files removed from the media queue. ");
+        }
+        System.out.println("Your next toot will not include any media attachments.");
+   }
 }
