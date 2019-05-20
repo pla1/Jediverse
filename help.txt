@@ -72,5 +72,11 @@ toot
 unfav
     Unfavor a status. Pass the status index.
 
+upload
+    Upload media file to be attached to your next toot.
+
+upload-clear
+    Clears the media file attachment queue in-case you changed your mind. Your next toot will not include any media attachments.
+
 url
     Show url for the status. Pass the status index. 
