@@ -196,6 +196,8 @@ public class CommandLineInterface {
             }
             if ("stream-public".equals(line) ||
                     "stream-public-local".equals(line) ||
+                    (words[0].equals("stream-list") && words.length == 2 && Utils.isNumeric(words[1])) ||
+                    (words[0].equals("stream-hashtag") && words.length == 2) ||
                     "stream-user".equals(line) ||
                     "stream-direct".equals(line)) {
                 if (threadStreaming == null) {
@@ -214,6 +216,12 @@ public class CommandLineInterface {
                 }
                 if ("stream-direct".equals(line)) {
                     stream = "direct";
+                }
+                if (words[0].equals("stream-list") && words.length == 2 && Utils.isNumeric(words[1])) {
+                    stream = String.format("list&list=%s", words[1]);
+                }
+                if (words[0].equals("stream-hashtag") && words.length == 2) {
+                    stream = String.format("hashtag&tag=%s", Utils.urlEncodeComponent(words[1]));
                 }
                 if (Utils.isNotBlank(stream)) {
                     threadStreaming.streamingStart(stream);
@@ -979,8 +987,8 @@ public class CommandLineInterface {
             var client = HttpClient.newHttpClient();
             String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
                     Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
-            webSocket = client.newWebSocketBuilder()
-                    .buildAsync(URI.create(urlString), wsListener).join();
+            System.out.println(urlString);
+            webSocket = client.newWebSocketBuilder().buildAsync(URI.create(urlString), wsListener).join();
         }
 
         private void streamingStop() {
@@ -1024,7 +1032,7 @@ public class CommandLineInterface {
     }
 
     private static HttpRequest.BodyPublisher ofMimeMultipartData(Map<Object, Object> data,
-                                                                String boundary) throws IOException {
+                                                                 String boundary) throws IOException {
         var byteArrays = new ArrayList<byte[]>();
         byte[] separator = ("--" + boundary + "\r\nContent-Disposition: form-data; name=")
                 .getBytes(StandardCharsets.UTF_8);

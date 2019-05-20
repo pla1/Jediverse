@@ -51,6 +51,9 @@ quantity
 quit or exit
     Quit Jediverse CLI program.
 
+stream-hashtag
+    Stream a hashtag. Example: stream-hashtag #cycling
+
 stream-public
     Stream public statuses.
 
