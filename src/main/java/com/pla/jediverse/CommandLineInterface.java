@@ -65,8 +65,8 @@ public class CommandLineInterface {
         if ("none".equalsIgnoreCase(audioFileName)) {
             return;
         }
-        AudioInputStream audioInputStream = null;
-        Clip clip = null;
+        AudioInputStream audioInputStream;
+        Clip clip;
         try {
             File file = new File(audioFileName).getAbsoluteFile();
             //    System.out.format("Audio file: %s\n", file.getAbsolutePath());
@@ -367,7 +367,7 @@ public class CommandLineInterface {
         JsonObject params = new JsonObject();
         params.add("account_ids", arrayOfIds);
         JsonElement jsonElement = postAsJson(Utils.getUrl(urlString), params.toString());
-  //      System.out.format("RESPONSE: %s\n", jsonElement.toString());
+        //      System.out.format("RESPONSE: %s\n", jsonElement.toString());
     }
 
     private void following() {
@@ -391,13 +391,13 @@ public class CommandLineInterface {
                 System.out.format("Added %d accounts. Total: %d\n", jsonArray.size(), jsonArrayFollowing.size());
                 url = null;
                 if (Utils.isNotBlank(linkHeader)) {
-              //      System.out.format("Link header: %s\n", linkHeader);
+                    //      System.out.format("Link header: %s\n", linkHeader);
                     Pattern pattern = Pattern.compile("<([^>]+)>;\\s+rel=\"([^\"]+)\"");
                     Matcher matcher = pattern.matcher(linkHeader);
                     while (matcher.find()) {
                         urlString = matcher.group(1);
                         String rel = matcher.group(2);
-                   //     System.out.format("URL: %s REL: %s\n", urlString, rel);
+                        //     System.out.format("URL: %s REL: %s\n", urlString, rel);
                         if ("next".equals(rel)) {
                             url = Utils.getUrl(urlString);
                         }
@@ -1004,19 +1004,16 @@ public class CommandLineInterface {
             return;
         }
         var client = HttpClient.newBuilder().build();
-
         Map<Object, Object> data = new LinkedHashMap<>();
         data.put("access_token", Utils.getProperty(settingsJsonObject, "access_token"));
-        data.put("description", String.format("%s %s", this.getClass().getName(), new Date()));
+        data.put("description", String.format("%s uploaded by %s CLI.", fileName, this.getClass().getSimpleName()));
         data.put("file", Paths.get(fileName));
         String boundary = new BigInteger(256, new Random()).toString();
-
         var request = HttpRequest.newBuilder()
                 .header("Content-Type", "multipart/form-data;boundary=" + boundary)
                 .POST(ofMimeMultipartData(data, boundary))
                 .uri(URI.create(urlString))
                 .build();
-
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         //   System.out.format("%s\n", response.body());
         JsonParser jsonParser = new JsonParser();
@@ -1026,7 +1023,7 @@ public class CommandLineInterface {
                 fileName, Utils.getProperty(jsonElement, "id"), mediaArrayList.size());
     }
 
-    public static HttpRequest.BodyPublisher ofMimeMultipartData(Map<Object, Object> data,
+    private static HttpRequest.BodyPublisher ofMimeMultipartData(Map<Object, Object> data,
                                                                 String boundary) throws IOException {
         var byteArrays = new ArrayList<byte[]>();
         byte[] separator = ("--" + boundary + "\r\nContent-Disposition: form-data; name=")
@@ -1054,12 +1051,13 @@ public class CommandLineInterface {
         return HttpRequest.BodyPublishers.ofByteArrays(byteArrays);
     }
 
-   private void clearMediaArrayList() {
+    private void clearMediaArrayList() {
         if (mediaArrayList.isEmpty()) {
             System.out.format("There aren't any uploaded media files in the queue. ");
         } else {
-            System.out.format("%d files removed from the media queue. ");
+            System.out.format("%d files removed from the media queue.", mediaArrayList.size());
+            mediaArrayList.clear();
         }
         System.out.println("Your next toot will not include any media attachments.");
-   }
+    }
 }
