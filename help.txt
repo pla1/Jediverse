@@ -48,7 +48,7 @@ rep or reply
 quantity
     Set the quantity of statuses returned from timeline. Pass the quantity. Note: Server may or may not honor anything greater than 20.
 
-quit
+quit or exit
     Quit Jediverse CLI program.
 
 stream-public

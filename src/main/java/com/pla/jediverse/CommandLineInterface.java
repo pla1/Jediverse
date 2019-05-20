@@ -306,7 +306,7 @@ public class CommandLineInterface {
                 System.out.format("Fav this: %s\n", jsonElement.toString());
                 unfavourite(Utils.getProperty(jsonElement, "id"));
             }
-            if ("quit".equals(line)) {
+            if ("quit".equals(line) || "exit".equals(line)) {
                 System.exit(0);
             }
             if ("help".equals(line)) {
@@ -1055,7 +1055,7 @@ public class CommandLineInterface {
         if (mediaArrayList.isEmpty()) {
             System.out.format("There aren't any uploaded media files in the queue. ");
         } else {
-            System.out.format("%d files removed from the media queue.", mediaArrayList.size());
+            System.out.format("%d files removed from the media queue. ", mediaArrayList.size());
             mediaArrayList.clear();
         }
         System.out.println("Your next toot will not include any media attachments.");
