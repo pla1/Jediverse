@@ -42,7 +42,7 @@ public class CommandLineInterface {
     private JsonObject settingsJsonObject;
     private JsonArray jsonArrayAll = new JsonArray();
     private Logger logger;
-    private ThreadStreaming threadStreaming;
+    private ArrayList<ThreadStreaming> threads = new ArrayList<>();
     private JsonArray jsonArrayFollowing = new JsonArray();
     private ArrayList<JsonElement> mediaArrayList = new ArrayList<>();
 
@@ -200,10 +200,9 @@ public class CommandLineInterface {
                     (words[0].equals("stream-hashtag") && words.length == 2) ||
                     "stream-user".equals(line) ||
                     "stream-direct".equals(line)) {
-                if (threadStreaming == null) {
-                    threadStreaming = new ThreadStreaming();
-                    threadStreaming.start();
-                }
+                ThreadStreaming threadStreaming = new ThreadStreaming();
+                threadStreaming.start();
+                threads.add(threadStreaming);
                 String stream = null;
                 if ("stream-public".equals(line)) {
                     stream = "public";
@@ -228,8 +227,10 @@ public class CommandLineInterface {
                 }
             }
             if ("stop".equals(line)) {
-                if (threadStreaming != null) {
-                    threadStreaming.streamingStop();
+                for (ThreadStreaming thread:threads) {
+                    if (thread!= null) {
+                        thread.streamingStop();
+                    }
                 }
             }
             if ("timeline".equals(line) || "tl".equals(line)) {
@@ -691,7 +692,7 @@ public class CommandLineInterface {
         printJsonElements(jsonArray, null);
     }
 
-    private void printJsonElement(JsonElement jsonElement, String searchString) {
+    private synchronized void printJsonElement(JsonElement jsonElement, String searchString) {
         jsonArrayAll.add(jsonElement);
         logger.info(jsonElement.toString());
         String symbol = Utils.SYMBOL_PENCIL;
@@ -913,7 +914,6 @@ public class CommandLineInterface {
     private class ThreadStreaming extends Thread {
         WebSocket.Listener wsListener = new WebSocket.Listener() {
             private StringBuilder sb = new StringBuilder();
-            private Gson gson = new GsonBuilder().setPrettyPrinting().create();
             private JsonParser jsonParser = new JsonParser();
 
             @Override
@@ -924,7 +924,7 @@ public class CommandLineInterface {
                     sb.append(data);
                     JsonElement messageJsonElement = jsonParser.parse(sb.toString());
                     if (Utils.isJsonObject(messageJsonElement)) {
-                        String event = Utils.getProperty(messageJsonElement,"event");
+                        String event = Utils.getProperty(messageJsonElement, "event");
                         if ("notification".equals(event)) {
                             playAudio();
                             System.out.format("%s", Utils.SYMBOL_SPEAKER);
@@ -994,7 +994,7 @@ public class CommandLineInterface {
             var client = HttpClient.newHttpClient();
             String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
                     Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
-         //   System.out.println(urlString);
+            //   System.out.println(urlString);
             webSocket = client.newWebSocketBuilder().buildAsync(URI.create(urlString), wsListener).join();
         }
 
