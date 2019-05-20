@@ -924,11 +924,15 @@ public class CommandLineInterface {
                     sb.append(data);
                     JsonElement messageJsonElement = jsonParser.parse(sb.toString());
                     if (Utils.isJsonObject(messageJsonElement)) {
+                        String event = Utils.getProperty(messageJsonElement,"event");
+                        if ("notification".equals(event)) {
+                            playAudio();
+                            System.out.format("%s", Utils.SYMBOL_SPEAKER);
+                        }
                         String payload = messageJsonElement.getAsJsonObject().get("payload").getAsString();
                         if (Utils.isNotBlank(payload)) {
                             JsonElement payloadJsonElement = jsonParser.parse(payload);
                             if (Utils.isJsonObject(payloadJsonElement)) {
-                                playAudio();
                                 printJsonElement(payloadJsonElement, null);
                             }
                         } else {
@@ -990,7 +994,7 @@ public class CommandLineInterface {
             var client = HttpClient.newHttpClient();
             String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
                     Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
-            System.out.println(urlString);
+         //   System.out.println(urlString);
             webSocket = client.newWebSocketBuilder().buildAsync(URI.create(urlString), wsListener).join();
         }
 
