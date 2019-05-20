@@ -92,6 +92,9 @@ public class Utils {
     }
 
     public static boolean isNumeric(String s) {
+        if (s == null || s.trim().length() == 0) {
+            return false;
+        }
         try {
             Double.parseDouble(s);
             return true;
@@ -322,7 +325,7 @@ public class Utils {
             logger.addHandler(fh);
             SimpleFormatter formatter = new SimpleFormatter();
             fh.setFormatter(formatter);
-        } catch (SecurityException|IOException e) {
+        } catch (SecurityException | IOException e) {
             e.printStackTrace();
         }
         return logger;

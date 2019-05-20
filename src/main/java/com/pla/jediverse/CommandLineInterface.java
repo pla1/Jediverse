@@ -479,18 +479,21 @@ public class CommandLineInterface {
                 JsonObject jsonObject = jsonElement.getAsJsonObject();
                 String millisecondsString = Utils.getProperty(jsonObject, "milliseconds");
                 long milliseconds = Utils.getLong(millisecondsString);
-                //         System.out.format("Milliseconds: \"%s\" %d\n", millisecondsString, milliseconds);
                 System.out.format("%d Instance: %s added: %s\n", i++, jsonObject.get("instance"), new Date(milliseconds));
             }
             String answer = ask("");
-            if (Utils.isNotBlank(answer)) {
+            if (answer == null) {
+                System.exit(0);
+            }
+            if (Utils.isNumeric(answer)) {
                 int index = Utils.getInt(answer);
-                //  System.out.format("Instance index: %d\n",index);
                 if (index > settingsJsonArray.size() || settingsJsonArray.size() == 0) {
                     System.out.format("Instance number %d not found.\n", index);
                 } else {
                     settingsJsonObject = settingsJsonArray.get(index).getAsJsonObject();
                 }
+            } else {
+                System.out.format("Choose the index for the instance you want to use. Must be between 0 and %d.\n", settingsJsonArray.size() - 1);
             }
         }
         return settingsJsonObject;
