@@ -754,7 +754,7 @@ public class CommandLineInterface {
     }
 
     private void notifications(String extra) {
-        String urlString = String.format("https://%s/api/v1/notifications?limit=%d%s", settingsJsonObject.get("instance").getAsString(), DEFAULT_QUANTITY, extra);
+        String urlString = String.format("https://%s/api/v1/notifications?limit=%d%s", settingsJsonObject.get("instance").getAsString(), getQuantity(), extra);
         System.out.println(urlString);
         JsonArray jsonArray = getJsonArray(urlString);
         int i = jsonArray.size() - 1;
