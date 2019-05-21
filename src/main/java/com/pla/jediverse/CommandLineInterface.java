@@ -723,6 +723,12 @@ public class CommandLineInterface {
         if ("follow".equals(type) && Utils.isBlank(text)) {
             text = String.format("followed you. %s", Utils.getProperty(accountJe, "url"));
         }
+        if ("reblog".equals(type) && Utils.isBlank(text)) {
+            JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
+            if (Utils.isJsonObject(statusJe)) {
+                text = String.format("repeated your status %s.", Utils.getProperty(statusJe, "url"));
+            }
+        }
         String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
         System.out.format("%d %s%s %s %s %s\n", jsonArrayAll.size() - 1, symbol, reblogLabel, dateDisplay, green(acct), text);
     }
