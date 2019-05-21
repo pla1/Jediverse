@@ -1033,6 +1033,11 @@ public class CommandLineInterface {
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         //   System.out.format("%s\n", response.body());
         JsonParser jsonParser = new JsonParser();
+        int responseStatusCode = response.statusCode();
+        if (responseStatusCode == 413) {
+            System.out.format("File %s is too large. Size is %s.\n", fileName,Utils.humanReadableByteCount(file.length()));
+            return;
+        }
         JsonElement jsonElement = jsonParser.parse(response.body());
         mediaArrayList.add(jsonElement);
         System.out.format("File %s uploaded as ID %s. You have %d file(s) that will be attached to your next toot.\n",
