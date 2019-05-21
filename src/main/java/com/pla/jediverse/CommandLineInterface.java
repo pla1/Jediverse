@@ -719,6 +719,10 @@ public class CommandLineInterface {
             String searchStringHighlighted = reverseVideo(searchString);
             text = text.replaceAll(searchString, searchStringHighlighted);
         }
+        String type = Utils.getProperty(jsonElement, "type");
+        if ("follow".equals(type) && Utils.isBlank(text)) {
+            text = String.format("followed you. %s", Utils.getProperty(accountJe, "url"));
+        }
         String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
         System.out.format("%d %s%s %s %s %s\n", jsonArrayAll.size() - 1, symbol, reblogLabel, dateDisplay, green(acct), text);
     }
@@ -962,25 +966,25 @@ public class CommandLineInterface {
 
             @Override
             public void onOpen(WebSocket webSocket) {
-                System.out.println("Websocket opened.");
+                System.out.format("WebSocket opened for %s stream.\n", stream);
                 WebSocket.Listener.super.onOpen(webSocket);
             }
 
             @Override
             public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-                System.out.println("onClose: " + statusCode + " " + reason);
+                System.out.format("WebSocket closed. Status code: %d Reason: %s Stream: %s\n.",statusCode, reason, stream);
                 return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
             }
 
             @Override
             public void onError(WebSocket webSocket, Throwable error) {
-                System.out.format("Websocket error: %s.\n", error.getLocalizedMessage());
+                System.out.format("WebSocket error: %s.\n", error.getLocalizedMessage());
                 error.printStackTrace();
             }
 
             @Override
             public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
-                System.out.format("Binary data received on websocket.\n");
+                System.out.format("Binary data received on WebSocket.\n");
                 return WebSocket.Listener.super.onBinary(webSocket, data, last);
             }
         };
