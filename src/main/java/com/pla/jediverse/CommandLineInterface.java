@@ -1001,9 +1001,10 @@ public class CommandLineInterface {
         private String stream;
 
         private ThreadStreaming(String stream) {
-            super(stream);
+            super(String.format("Jediverse_Streaming_Thread_%s", stream));
             this.setDaemon(true);
             this.stream = stream;
+            System.out.format("Thread name: %s\n", this.getName());
         }
 
 
