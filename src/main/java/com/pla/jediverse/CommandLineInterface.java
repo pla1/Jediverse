@@ -39,6 +39,7 @@ public class CommandLineInterface {
     private static BufferedReader console;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final int DEFAULT_QUANTITY = 20;
+    private final String DEFAULT_AUDIO_FILE_NAME = "ding.wav";
     private JsonObject settingsJsonObject;
     private JsonArray jsonArrayAll = new JsonArray();
     private Logger logger;
@@ -599,6 +600,8 @@ public class CommandLineInterface {
         jsonObject.addProperty("created_at", Utils.getProperty(outputJsonObject, "created_at"));
         jsonObject.addProperty("instance", instance);
         jsonObject.addProperty("milliseconds", System.currentTimeMillis());
+        jsonObject.addProperty("quantity",DEFAULT_QUANTITY);
+        jsonObject.addProperty("audioFileName", DEFAULT_AUDIO_FILE_NAME);
         JsonArray jsonArray = new JsonArray();
         if (new File(getSettingsFileName()).exists()) {
             JsonParser parser = new JsonParser();
