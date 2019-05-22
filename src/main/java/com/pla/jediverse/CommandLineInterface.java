@@ -610,8 +610,8 @@ public class CommandLineInterface {
         Utils.write(getSettingsFileName(), pretty);
         settingsJsonObject = jsonObject;
         System.out.format("Added. You are now ");
-        whoami();
-        //   System.out.println(jsonObject);
+        JsonElement jsonElementWhoAmI = whoami();
+        System.out.format("%s %s\n", Utils.getProperty(jsonElementWhoAmI, "username"), Utils.getProperty(jsonElementWhoAmI, "url"));
     }
 
     private String getSettingsFileName() {
@@ -978,7 +978,7 @@ public class CommandLineInterface {
 
             @Override
             public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-                System.out.format("WebSocket closed. Status code: %d Reason: %s Stream: %s\n.",statusCode, reason, stream);
+                System.out.format("WebSocket closed. Status code: %d Reason: %s Stream: %s\n.", statusCode, reason, stream);
                 return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
             }
 
@@ -1045,7 +1045,7 @@ public class CommandLineInterface {
         JsonParser jsonParser = new JsonParser();
         int responseStatusCode = response.statusCode();
         if (responseStatusCode == 413) {
-            System.out.format("File %s is too large. Size is %s.\n", fileName,Utils.humanReadableByteCount(file.length()));
+            System.out.format("File %s is too large. Size is %s.\n", fileName, Utils.humanReadableByteCount(file.length()));
             return;
         }
         JsonElement jsonElement = jsonParser.parse(response.body());
