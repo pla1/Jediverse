@@ -1,8 +1,6 @@
 package com.pla.jediverse;
 
-import com.google.common.io.Resources;
 import com.google.gson.*;
-import com.google.gson.stream.JsonReader;
 import org.jsoup.Jsoup;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -20,13 +18,10 @@ import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Supplier;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,7 +38,7 @@ public class CommandLineInterface {
     private JsonObject settingsJsonObject;
     private JsonArray jsonArrayAll = new JsonArray();
     private Logger logger;
-    private ArrayList<ThreadStreaming> threads = new ArrayList<>();
+    private ArrayList<WebSocket> webSockets = new ArrayList<>();
     private JsonArray jsonArrayFollowing = new JsonArray();
     private ArrayList<JsonElement> mediaArrayList = new ArrayList<>();
 
@@ -222,15 +217,18 @@ public class CommandLineInterface {
                     stream = String.format("hashtag&tag=%s", Utils.urlEncodeComponent(words[1]));
                 }
                 if (Utils.isNotBlank(stream)) {
-                    ThreadStreaming threadStreaming = new ThreadStreaming(stream);
-                    threadStreaming.start();
-                    threads.add(threadStreaming);
+                    var client = HttpClient.newHttpClient();
+                    String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
+                            Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
+                    WebSocketListener webSocketListener = new WebSocketListener(stream);
+                    WebSocket webSocket = client.newWebSocketBuilder().buildAsync(URI.create(urlString), webSocketListener).join();
+                    webSockets.add(webSocket);
                 }
             }
             if ("stop".equals(line)) {
-                for (ThreadStreaming thread : threads) {
-                    if (thread != null) {
-                        thread.streamingStop();
+                for (WebSocket webSocket : webSockets) {
+                    if (webSocket != null) {
+                        webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "ok");
                     }
                 }
             }
@@ -923,104 +921,79 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/accounts/verify_credentials", Utils.getProperty(settingsJsonObject, "instance"));
         return getJsonElement(urlString);
     }
-
-    private class ThreadStreaming extends Thread {
-        WebSocket.Listener wsListener = new WebSocket.Listener() {
-            private StringBuilder sb = new StringBuilder();
-            private JsonParser jsonParser = new JsonParser();
-
-            @Override
-            public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-                logger.info(String.format("onText Last: %s Data: %s", last, data));
-                //      System.out.format("onText Last: %s Data: %s\n", last, data);
-                if (last) {
-                    sb.append(data);
-                    JsonElement messageJsonElement = jsonParser.parse(sb.toString());
-                    if (Utils.isJsonObject(messageJsonElement)) {
-                        String event = Utils.getProperty(messageJsonElement, "event");
-                        if ("notification".equals(event)) {
-                            playAudio();
-                            System.out.format("%s", Utils.SYMBOL_SPEAKER);
-                        }
-                        String payload = messageJsonElement.getAsJsonObject().get("payload").getAsString();
-                        if (Utils.isNotBlank(payload)) {
-                            JsonElement payloadJsonElement = jsonParser.parse(payload);
-                            if (Utils.isJsonObject(payloadJsonElement)) {
-                                printJsonElement(payloadJsonElement, null);
-                            }
-                        } else {
-                            System.out.format("Payload is blank.\n");
+    private class WebSocketListener implements WebSocket.Listener {
+        private String stream;
+        private StringBuilder sb = new StringBuilder();
+        private JsonParser jsonParser = new JsonParser();
+        WebSocketListener(String stream) {
+            this.stream = stream;
+        }
+        @Override
+        public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
+            logger.info(String.format("onText Last: %s Data: %s", last, data));
+            //      System.out.format("onText Last: %s Data: %s\n", last, data);
+            if (last) {
+                sb.append(data);
+                JsonElement messageJsonElement = jsonParser.parse(sb.toString());
+                if (Utils.isJsonObject(messageJsonElement)) {
+                    String event = Utils.getProperty(messageJsonElement, "event");
+                    if ("notification".equals(event)) {
+                        playAudio();
+                        System.out.format("%s", Utils.SYMBOL_SPEAKER);
+                    }
+                    String payload = messageJsonElement.getAsJsonObject().get("payload").getAsString();
+                    if (Utils.isNotBlank(payload)) {
+                        JsonElement payloadJsonElement = jsonParser.parse(payload);
+                        if (Utils.isJsonObject(payloadJsonElement)) {
+                            printJsonElement(payloadJsonElement, null);
                         }
                     } else {
-                        //   System.out.format("JSON element is null.\n");
+                        System.out.format("Payload is blank.\n");
                     }
-                    sb = new StringBuilder();
                 } else {
-                    sb.append(data);
+                    //   System.out.format("JSON element is null.\n");
                 }
-                return WebSocket.Listener.super.onText(webSocket, data, last);
+                sb = new StringBuilder();
+            } else {
+                sb.append(data);
             }
-
-            @Override
-            public CompletionStage<?> onPing(WebSocket webSocket, ByteBuffer message) {
-                System.out.format("onPing Message: %s\n", message);
-                return WebSocket.Listener.super.onPing(webSocket, message);
-            }
-
-            @Override
-            public CompletionStage<?> onPong(WebSocket webSocket, ByteBuffer message) {
-                System.out.format("onPong Message: %s\n", message);
-                return WebSocket.Listener.super.onPong(webSocket, message);
-            }
-
-            @Override
-            public void onOpen(WebSocket webSocket) {
-                System.out.format("WebSocket opened for %s stream.\n", stream);
-                WebSocket.Listener.super.onOpen(webSocket);
-            }
-
-            @Override
-            public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-                System.out.format("WebSocket closed. Status code: %d Reason: %s Stream: %s\n.", statusCode, reason, stream);
-                return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
-            }
-
-            @Override
-            public void onError(WebSocket webSocket, Throwable error) {
-                System.out.format("WebSocket error: %s.\n", error.getLocalizedMessage());
-                error.printStackTrace();
-            }
-
-            @Override
-            public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
-                System.out.format("Binary data received on WebSocket.\n");
-                return WebSocket.Listener.super.onBinary(webSocket, data, last);
-            }
-        };
-        private WebSocket webSocket;
-        private String stream;
-
-        private ThreadStreaming(String stream) {
-            super(String.format("Jediverse_Streaming_Thread_%s", stream));
-            this.setDaemon(true);
-            this.stream = stream;
-            System.out.format("Thread name: %s\n", this.getName());
-        }
-
-
-        private void streamingStop() {
-            if (webSocket != null) {
-                webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "ok");
-            }
+            return WebSocket.Listener.super.onText(webSocket, data, last);
         }
 
         @Override
-        public void run() {
-            var client = HttpClient.newHttpClient();
-            String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
-                    Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
-            //   System.out.println(urlString);
-            webSocket = client.newWebSocketBuilder().buildAsync(URI.create(urlString), wsListener).join();
+        public CompletionStage<?> onPing(WebSocket webSocket, ByteBuffer message) {
+            System.out.format("onPing Message: %s\n", message);
+            return WebSocket.Listener.super.onPing(webSocket, message);
+        }
+
+        @Override
+        public CompletionStage<?> onPong(WebSocket webSocket, ByteBuffer message) {
+            System.out.format("onPong Message: %s\n", message);
+            return WebSocket.Listener.super.onPong(webSocket, message);
+        }
+
+        @Override
+        public void onOpen(WebSocket webSocket) {
+            System.out.format("WebSocket opened for %s stream.\n", stream);
+            WebSocket.Listener.super.onOpen(webSocket);
+        }
+
+        @Override
+        public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
+            System.out.format("WebSocket closed. Status code: %d Reason: %s Stream: %s\n.", statusCode, reason, stream);
+            return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
+        }
+
+        @Override
+        public void onError(WebSocket webSocket, Throwable error) {
+            System.out.format("WebSocket error: %s.\n", error.getLocalizedMessage());
+            error.printStackTrace();
+        }
+
+        @Override
+        public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
+            System.out.format("Binary data received on WebSocket.\n");
+            return WebSocket.Listener.super.onBinary(webSocket, data, last);
         }
     }
 
