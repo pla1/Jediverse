@@ -396,7 +396,7 @@ public class CommandLineInterface {
                 InputStreamReader isr = new InputStreamReader(is);
                 JsonArray jsonArray = gson.fromJson(isr, JsonArray.class);
                 jsonArrayFollowing.addAll(jsonArray);
-                System.out.format("Added %d accounts. Total: %d\n", jsonArray.size(), jsonArrayFollowing.size());
+                System.out.format("Gathered %d accounts. Total so far %d.\n", jsonArray.size(), jsonArrayFollowing.size());
                 url = null;
                 if (Utils.isNotBlank(linkHeader)) {
                     //      System.out.format("Link header: %s\n", linkHeader);
