@@ -41,6 +41,7 @@ public class CommandLineInterface {
     private ArrayList<WebSocket> webSockets = new ArrayList<>();
     private JsonArray jsonArrayFollowing = new JsonArray();
     private ArrayList<JsonElement> mediaArrayList = new ArrayList<>();
+    private JsonArray jsonArrayAccounts = new JsonArray();
 
     private CommandLineInterface() {
         setup();
@@ -355,7 +356,19 @@ public class CommandLineInterface {
         int statusCode = deleteAsJson(Utils.getUrl(urlString), null);
         System.out.format("Delete list id: %s returned status code: %d.\n", id, statusCode);
     }
-
+    private void accountFollow(int index) {
+        if (index < 0 || index > jsonArrayAccounts.size()) {
+            System.out.format("Index %d not found. Here is the list of accounts from the latest account-search.\n");
+            int i = 0;
+            for (JsonElement account : jsonArrayAccounts) {
+                System.out.format("%d %s %s %s %s %s\n",
+                        i++, Utils.getProperty(account, "acct"), Utils.getProperty(account, "username"), Utils.getProperty(account, "display_name"), Utils.getProperty(account, "url"), Jsoup.parse(Utils.getProperty(account, "note")).text());
+            }
+            return;
+        }
+        JsonElement accountJsonElement = jsonArrayAccounts.get(index);
+        String urlString = String.format("");
+    }
     private void listAddAccount(String id, String searchString) {
         if (jsonArrayFollowing.size() == 0) {
             following();
@@ -601,7 +614,7 @@ public class CommandLineInterface {
         jsonObject.addProperty("created_at", Utils.getProperty(outputJsonObject, "created_at"));
         jsonObject.addProperty("instance", instance);
         jsonObject.addProperty("milliseconds", System.currentTimeMillis());
-        jsonObject.addProperty("quantity",DEFAULT_QUANTITY);
+        jsonObject.addProperty("quantity", DEFAULT_QUANTITY);
         jsonObject.addProperty("audioFileName", DEFAULT_AUDIO_FILE_NAME);
         JsonArray jsonArray = new JsonArray();
         if (new File(getSettingsFileName()).exists()) {
@@ -667,31 +680,28 @@ public class CommandLineInterface {
     }
 
 
-
-
-
-
     private void accountSearch(String line) {
         String searchString = line.substring(15);
         String encodedQuery = Utils.urlEncodeComponent(searchString);
         String urlString = String.format("https://%s/api/v1/accounts/search?q=%s",
                 Utils.getProperty(settingsJsonObject, "instance"), encodedQuery);
-        JsonArray jsonArray  = getJsonArray(urlString);
-        System.out.format("Search results: %s\n", jsonArray);
-
+        jsonArrayAccounts = getJsonArray(urlString);
+        int i = 0;
+        for (JsonElement account : jsonArrayAccounts) {
+            System.out.format("%d %s %s %s %s %s\n",
+                    i++, Utils.getProperty(account, "acct"), Utils.getProperty(account, "username"), Utils.getProperty(account, "display_name"), Utils.getProperty(account, "url"), Jsoup.parse(Utils.getProperty(account, "note")).text());
+        }
+        if (jsonArrayAccounts.size() == 1) {
+            System.out.format("Use account-follow 0 or account-unfollow 0.\n");
+        } else {
+            if (jsonArrayAccounts.size() > 1) {
+                System.out.format("Use account-follow 0 through %d or account-unfollow 0 through %d.\n",
+                        jsonArrayAccounts.size() - 1, jsonArrayAccounts.size() - 1);
+            } else {
+                System.out.format("No accounts found with \"%s\"\n.", searchString);
+            }
+        }
     }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     private void search(String line) {
@@ -952,13 +962,16 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/accounts/verify_credentials", Utils.getProperty(settingsJsonObject, "instance"));
         return getJsonElement(urlString);
     }
+
     private class WebSocketListener implements WebSocket.Listener {
         private String stream;
         private StringBuilder sb = new StringBuilder();
         private JsonParser jsonParser = new JsonParser();
+
         WebSocketListener(String stream) {
             this.stream = stream;
         }
+
         @Override
         public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
             logger.info(String.format("onText Last: %s Data: %s", last, data));
