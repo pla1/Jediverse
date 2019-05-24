@@ -126,6 +126,9 @@ public class CommandLineInterface {
             if (line.startsWith("search") && words.length > 1) {
                 search(line);
             }
+            if ("account-search".equals(words[0]) && words.length > 1) {
+                accountSearch(line);
+            }
             if (line.startsWith("upload") && words.length > 1) {
                 try {
                     upload(line);
@@ -662,6 +665,34 @@ public class CommandLineInterface {
             return null;
         }
     }
+
+
+
+
+
+
+    private void accountSearch(String line) {
+        String searchString = line.substring(15);
+        String encodedQuery = Utils.urlEncodeComponent(searchString);
+        String urlString = String.format("https://%s/api/v1/accounts/search?q=%s",
+                Utils.getProperty(settingsJsonObject, "instance"), encodedQuery);
+        JsonArray jsonArray  = getJsonArray(urlString);
+        System.out.format("Search results: %s\n", jsonArray);
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     private void search(String line) {
         String searchString = line.substring(7);
