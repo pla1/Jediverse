@@ -490,16 +490,37 @@ public class Utils {
             return false;
         }
     }
+
     public static String humanReadableByteCount(long bytes) {
         return humanReadableByteCount(bytes, true);
 
     }
+
     public static String humanReadableByteCount(long bytes, boolean si) {
         int unit = si ? 1000 : 1024;
         if (bytes < unit) return bytes + " B";
         int exp = (int) (Math.log(bytes) / Math.log(unit));
-        String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
+        String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp - 1) + (si ? "" : "i");
         return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
+    }
+
+    public static boolean isYes(String s) {
+        if (s == null) {
+            return false;
+        }
+        if ("true".equalsIgnoreCase(s)) {
+            return true;
+        }
+        if ("yes".equalsIgnoreCase(s)) {
+            return true;
+        }
+        if ("y".equalsIgnoreCase(s)) {
+            return true;
+        }
+        if ("1".equalsIgnoreCase(s)) {
+            return true;
+        }
+        return false;
     }
 
 }
