@@ -337,7 +337,12 @@ public class CommandLineInterface {
                     continue;
                 }
                 JsonElement jsonElement = jsonArrayAll.get(index);
+                System.out.println(jsonElement);
                 String urlString = Utils.getProperty(jsonElement, "url");
+                if (Utils.isBlank(urlString)) {
+                    JsonElement status = jsonElement.getAsJsonObject().get("status");
+                    urlString = Utils.getProperty(status, "url");
+                }
                 if (Utils.isNotBlank(urlString)) {
                     Utils.run(new String[]{"xdg-open", urlString});
                 }
