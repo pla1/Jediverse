@@ -359,7 +359,7 @@ public class CommandLineInterface {
             if ("quit".equals(line) || "exit".equals(line)) {
                 System.exit(0);
             }
-            if ("help".equals(line)) {
+            if ("help".equals(line) || "?".equals(line)) {
                 System.out.println(Utils.readFileToString("help.txt"));
             }
             if ("whoami".equals(line)) {
@@ -663,7 +663,7 @@ public class CommandLineInterface {
         params.addProperty("client_name", "Jediverse CLI");
         params.addProperty("redirect_uris", "urn:ietf:wg:oauth:2.0:oob");
         params.addProperty("scopes", "read write follow push");
-        params.addProperty("website", "https://github.com/pla1/Jediverse");
+        params.addProperty("website", "https://jediverse.com");
         String urlString = String.format("https://%s/api/v1/apps", instance);
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
         //   System.out.format("%s\n", jsonObject.toString());
