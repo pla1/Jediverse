@@ -22,7 +22,7 @@ list-accounts
     Show accounts on list. Pass the list ID from the lists output.
 
 list-add-accounts
-    Add accounts to a list. It will add users from your following list based on the name you provide. Pass the user name.
+    Add accounts to a list. It will add users from your following list based on the name you provide. Pass the list number and the user name.
 
 list-create
     Create a new list. Pass the title.
