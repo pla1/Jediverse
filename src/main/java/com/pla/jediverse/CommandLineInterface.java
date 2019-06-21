@@ -27,11 +27,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-// TODO: 5/16/19 Need to clear objects and stop streaming when switching instances.
-
-
 public class CommandLineInterface {
-    private static BufferedReader console;
+    // private static BufferedReader console;
+    private static Scanner console;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final int DEFAULT_QUANTITY = 20;
     private final String DEFAULT_AUDIO_FILE_NAME = "ding.wav";
@@ -42,6 +40,28 @@ public class CommandLineInterface {
     private JsonArray jsonArrayFollowing = new JsonArray();
     private ArrayList<JsonElement> mediaArrayList = new ArrayList<>();
     private JsonArray jsonArrayAccounts = new JsonArray();
+
+    private void clearGlobalVariables() {
+        jsonArrayAccounts = new JsonArray();
+        mediaArrayList = new ArrayList<>();
+        jsonArrayFollowing = new JsonArray();
+        webSockets = new ArrayList<>();
+        jsonArrayAll = new JsonArray();
+    }
+
+    private void closeWebSockets() {
+        if (webSockets.isEmpty()) {
+            return;
+        }
+        int quantity = 0;
+        for (WebSocket webSocket : webSockets) {
+            if (webSocket != null) {
+                webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "ok");
+                quantity++;
+            }
+        }
+        System.out.format("Closed %d WebSockets.\n", quantity);
+    }
 
     private CommandLineInterface() {
         setup();
@@ -109,7 +129,8 @@ public class CommandLineInterface {
     }
 
     private void setup() {
-        console = new BufferedReader(new InputStreamReader(System.in));
+        //   console = new BufferedReader(new InputStreamReader(System.in));
+        console = new Scanner(System.in);
         logger = Utils.getLogger();
         JsonArray settingsJsonArray = getSettings();
         while (settingsJsonArray == null || settingsJsonArray.size() == 0) {
@@ -146,9 +167,10 @@ public class CommandLineInterface {
 
     private void mainRoutine() throws Exception {
         String line;
-        while ((line = console.readLine()) != null) {
-            line = line.trim();
+        while (console.hasNext()) {
+            line = console.nextLine();
             if (Utils.isBlank(line)) {
+                System.out.format("Line is blank. %s\n", line);
                 continue;
             }
             String[] words = line.split("\\s+");
@@ -264,11 +286,7 @@ public class CommandLineInterface {
                 }
             }
             if ("stop".equals(line)) {
-                for (WebSocket webSocket : webSockets) {
-                    if (webSocket != null) {
-                        webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "ok");
-                    }
-                }
+                closeWebSockets();
             }
             if ("timeline".equals(line) || "tl".equals(line)) {
                 timeline("home", "");
@@ -578,6 +596,8 @@ public class CommandLineInterface {
                     System.out.format("Instance number %d not found.\n", index);
                 } else {
                     settingsJsonObject = settingsJsonArray.get(index).getAsJsonObject();
+                    closeWebSockets();
+                    clearGlobalVariables();
                 }
             } else {
                 System.out.format("Choose the index for the instance you want to use. Must be between 0 and %d.\n", settingsJsonArray.size() - 1);
@@ -631,7 +651,8 @@ public class CommandLineInterface {
         }
         return jsonArray;
     }
-// // TODO: 5/26/19 Reply from noteifications is picking up the wrong ID. 
+
+    // // TODO: 5/26/19 Reply from noteifications is picking up the wrong ID.
     private void toot(String text, String inReplyToId, String visibility) {
         String urlString = String.format("https://%s/api/v1/statuses", Utils.getProperty(settingsJsonObject, "instance"));
         JsonObject params = new JsonObject();
@@ -736,18 +757,14 @@ public class CommandLineInterface {
     }
 
     private String ask(String prompt) {
-        try {
-            String line;
-            System.out.format("%s\n", prompt);
-            while ((line = console.readLine()) != null) {
-                System.out.println(line);
-                return line;
-            }
-            return null;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+        String line;
+        System.out.format("%s\n", prompt);
+        while (console.hasNext()) {
+            line = console.nextLine();
+            System.out.println(line);
+            return line;
         }
+        return null;
     }
 
     private void accountSearch(String line) {
