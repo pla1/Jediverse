@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.logging.Logger;
@@ -281,7 +282,7 @@ public class CommandLineInterface {
                     String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
                             Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
                     WebSocketListener webSocketListener = new WebSocketListener(stream);
-                    WebSocket webSocket = client.newWebSocketBuilder().buildAsync(URI.create(urlString), webSocketListener).join();
+                    WebSocket webSocket = client.newWebSocketBuilder().connectTimeout(Duration.ofSeconds(5)).buildAsync(URI.create(urlString), webSocketListener).join();
                     webSockets.add(webSocket);
                 }
             }
