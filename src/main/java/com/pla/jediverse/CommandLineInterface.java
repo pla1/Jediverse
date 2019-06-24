@@ -15,6 +15,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
+import java.net.http.WebSocket.Listener;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -287,7 +288,8 @@ public class CommandLineInterface {
                     stream = String.format("hashtag&tag=%s", Utils.urlEncodeComponent(words[1]));
                 }
                 if (Utils.isNotBlank(stream)) {
-                    var client = HttpClient.newHttpClient();
+                    //       var client = HttpClient.newHttpClient();
+                    HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
                     String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
                             Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
                     WebSocketListener webSocketListener = new WebSocketListener(stream);
@@ -328,9 +330,20 @@ public class CommandLineInterface {
                         System.out.format("Item at index: %d not found.\n", index);
                     } else {
                         JsonElement jsonElement = jsonArrayAll.get(index);
-                        String text = line.substring(line.indexOf(words[1]) + words[1].length());
-                        String visibility = Utils.getProperty(jsonElement, "visibility");
-                        postStatus(text, Utils.getProperty(jsonElement, "id"), visibility);
+                        String type = Utils.getProperty(jsonElement, "type");
+                        if ("favourite".equals(type) || "reblog".equals(type)) {
+                            System.out.format("You can't reply to a %s.\n", type);
+                        } else {
+                            String text = line.substring(line.indexOf(words[1]) + words[1].length());
+                            if ("mention".equals(type)) {
+                                JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
+                                String visibility = Utils.getProperty(statusJe, "visibility");
+                                postStatus(text, Utils.getProperty(statusJe, "id"), visibility);
+                            } else {
+                                String visibility = Utils.getProperty(jsonElement, "visibility");
+                                postStatus(text, Utils.getProperty(jsonElement, "id"), visibility);
+                            }
+                        }
                     }
                 }
 
@@ -537,7 +550,7 @@ public class CommandLineInterface {
             }
         }
         for (JsonElement jsonElement : jsonArrayFollowing) {
-            logger.info(jsonElement.toString());
+            logger.info(gson.toJson(jsonElement));
             System.out.format("%s %s\n", green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "username"));
         }
         System.out.format("Following %d accounts.\n", jsonArrayFollowing.size());
@@ -647,8 +660,8 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/lists", Utils.getProperty(settingsJsonObject, "instance"));
         JsonArray jsonArray = getJsonArray(urlString);
         for (JsonElement jsonElement : jsonArray) {
-            logger.info(jsonElement.toString());
-            System.out.format("%s %s\n", Utils.getProperty(jsonElement, "id"), Utils.getProperty(jsonElement, "title"));
+            logger.info(gson.toJson(jsonElement));
+            System.out.format("%s %s\n", cyan(Utils.getProperty(jsonElement, "id")), Utils.getProperty(jsonElement, "title"));
         }
     }
 
@@ -660,7 +673,7 @@ public class CommandLineInterface {
         } else {
             int i = 0;
             for (JsonElement jsonElement : jsonArray) {
-                logger.info(jsonElement.toString());
+                logger.info(gson.toJson(jsonElement));
                 System.out.format("%d %s %s %s\n", i++, green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "display_name"), Utils.getProperty(jsonElement, "url"));
             }
         }
@@ -837,7 +850,7 @@ public class CommandLineInterface {
 
     private synchronized void printJsonElement(JsonElement jsonElement, String searchString, String event) {
         jsonArrayAll.add(jsonElement);
-        logger.info(jsonElement.toString());
+        logger.info(gson.toJson(jsonElement));
         String symbol = Utils.SYMBOL_PENCIL;
         JsonElement reblogJe = jsonElement.getAsJsonObject().get("reblog");
         String reblogLabel = "";
@@ -845,13 +858,25 @@ public class CommandLineInterface {
             symbol = Utils.SYMBOL_REPEAT;
             JsonElement reblogAccountJe = reblogJe.getAsJsonObject().get("account");
             String reblogAccount = Utils.getProperty(reblogAccountJe, "acct");
-            reblogLabel = yellow(reblogAccount);
+            String displayName = Utils.getProperty(reblogAccountJe, "display_name");
+            if (Utils.isNotBlank(displayName)) {
+                displayName = String.format("%s <%s>", displayName, reblogAccount);
+            } else {
+                displayName = reblogAccount;
+            }
+            reblogLabel = yellow(displayName);
         }
         JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
         if (!Utils.isJsonObject(accountJe)) {
             return;
         }
         String acct = Utils.getProperty(accountJe, "acct");
+        String displayName = Utils.getProperty(accountJe, "display_name");
+        if (Utils.isNotBlank(displayName)) {
+            displayName = String.format("%s <%s>", displayName, acct);
+        } else {
+            displayName = acct;
+        }
         String createdAt = Utils.getProperty(jsonElement, "created_at");
         String content = Utils.getProperty(jsonElement, "content");
         String text = "";
@@ -883,11 +908,11 @@ public class CommandLineInterface {
         }
         String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
         //    System.out.format("DEBUG: Reblog label \"%s\" event: \"%s\" Type \"%s\"\n", reblogLabel, event, type);
-        System.out.format("%d %s%s %s %s %s", jsonArrayAll.size() - 1, symbol, reblogLabel, dateDisplay, green(acct), text);
+        System.out.format("%s %s%s %s %s %s", cyan(jsonArrayAll.size() - 1), symbol, reblogLabel, dateDisplay, green(displayName), text);
         JsonArray attachments = jsonElement.getAsJsonObject().getAsJsonArray("media_attachments");
         if (attachments != null) {
             for (JsonElement a : attachments) {
-                System.out.format(" \uD83D\uDDBC");
+                System.out.format(" %s", Utils.SYMBOL_PICTURE_FRAME);
             }
         }
         System.out.format("\n");
@@ -909,6 +934,14 @@ public class CommandLineInterface {
         return String.format("%s%s%s%s", Utils.ANSI_BOLD, Utils.ANSI_GREEN, s, Utils.ANSI_RESET);
     }
 
+    private String cyan(int i) {
+        return cyan(Integer.toString(i));
+    }
+
+    private String cyan(String s) {
+        return String.format("%s%s%s%s", Utils.ANSI_BOLD, Utils.ANSI_CYAN, s, Utils.ANSI_RESET);
+    }
+
     private String reverseVideo(String s) {
         return String.format("%s%s%s", Utils.ANSI_REVERSE_VIDEO, s, Utils.ANSI_RESET);
     }
@@ -921,7 +954,7 @@ public class CommandLineInterface {
         for (; i > -1; i--) {
             JsonElement jsonElement = jsonArray.get(i);
             jsonArrayAll.add(jsonElement);
-            logger.info(jsonElement.toString());
+            logger.info(gson.toJson(jsonElement));
             String symbol = Utils.SYMBOL_PENCIL;
             String text = "";
             String type = Utils.getProperty(jsonElement, "type");
@@ -948,7 +981,7 @@ public class CommandLineInterface {
             JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
             String acct = Utils.getProperty(accountJe, "acct");
             //   System.out.format("\n\n%s %s %s\n%s\n", symbol, acct, text, jsonElement);
-            System.out.format("%s %s %s %s\n", symbol, dateDisplay, green(acct), text);
+            System.out.format("%d %s %s %s %s\n", cyan(jsonArrayAll.size() - 1), symbol, dateDisplay, green(acct), text);
         }
         System.out.format("%d items.\n", jsonArray.size());
     }
@@ -1128,7 +1161,7 @@ public class CommandLineInterface {
         System.out.println("Your next postStatus will not include any media attachments.");
     }
 
-    private class WebSocketListener implements WebSocket.Listener {
+    private class WebSocketListener implements Listener {
         private String stream;
         private StringBuilder sb = new StringBuilder();
         private JsonParser jsonParser = new JsonParser();
@@ -1139,11 +1172,10 @@ public class CommandLineInterface {
 
         @Override
         public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-            logger.info(String.format("onText Last: %s Data: %s", last, data));
-            //      System.out.format("onText Last: %s Data: %s\n", last, data);
             if (last) {
                 sb.append(data);
                 JsonElement messageJsonElement = jsonParser.parse(sb.toString());
+                logger.info(gson.toJson(messageJsonElement));
                 if (Utils.isJsonObject(messageJsonElement)) {
                     String event = Utils.getProperty(messageJsonElement, "event");
                     String payloadString = messageJsonElement.getAsJsonObject().get("payload").getAsString();
@@ -1166,43 +1198,46 @@ public class CommandLineInterface {
             } else {
                 sb.append(data);
             }
-            return WebSocket.Listener.super.onText(webSocket, data, last);
+            return Listener.super.onText(webSocket, data, last);
         }
 
         @Override
         public CompletionStage<?> onPing(WebSocket webSocket, ByteBuffer message) {
             System.out.format("onPing Message: %s\n", message);
-            return WebSocket.Listener.super.onPing(webSocket, message);
+            return Listener.super.onPing(webSocket, message);
         }
 
         @Override
         public CompletionStage<?> onPong(WebSocket webSocket, ByteBuffer message) {
             System.out.format("onPong Message: %s\n", message);
-            return WebSocket.Listener.super.onPong(webSocket, message);
+            return Listener.super.onPong(webSocket, message);
         }
 
         @Override
         public void onOpen(WebSocket webSocket) {
             System.out.format("WebSocket opened for %s stream.\n", stream);
-            WebSocket.Listener.super.onOpen(webSocket);
+            Listener.super.onOpen(webSocket);
         }
 
         @Override
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             System.out.format("WebSocket closed. Status code: %d Reason: %s Stream: %s\n.", statusCode, reason, stream);
-            return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
+            webSocket.abort();
+            webSocket = null;
+            return Listener.super.onClose(webSocket, statusCode, reason);
         }
 
         @Override
         public void onError(WebSocket webSocket, Throwable error) {
             System.out.format("WebSocket error: %s.\n", error.getLocalizedMessage());
             error.printStackTrace();
+            Listener.super.onError(webSocket, error);
         }
 
         @Override
         public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
             System.out.format("Binary data received on WebSocket.\n");
-            return WebSocket.Listener.super.onBinary(webSocket, data, last);
+            return Listener.super.onBinary(webSocket, data, last);
         }
     }
 
@@ -1210,8 +1245,8 @@ public class CommandLineInterface {
         System.out.format("Jediverse is a command line interface for the Fediverse. Jediverse was created by https://pla.social/pla. YMMV ☮\n");
         System.out.format("Source %s\n", "https://github.com/pla1/Jediverse");
         System.out.format("Website https://jediverse.com/\n");
-        System.out.format("JSON logging file %s\n", jsonLoggerFile.getAbsolutePath());
-        System.out.format("Settings file %s\n", getSettingsFileName());
+        System.out.format("JSON logging file file://%s\n", jsonLoggerFile.getAbsolutePath());
+        System.out.format("Settings file file://%s\n", getSettingsFileName());
         System.out.format("User ");
         printWhoAmI();
         if (!webSockets.isEmpty()) {
@@ -1237,6 +1272,7 @@ public class CommandLineInterface {
         } catch (SecurityException | IOException e) {
             e.printStackTrace();
         }
+        logger.info(String.format("This file: %s", jsonLoggerFile.getAbsolutePath()));
         return logger;
     }
 }
