@@ -314,23 +314,6 @@ public class Utils {
         return uri;
     }
 
-    public static Logger getLogger() {
-        Logger logger = Logger.getLogger("JediverseJsonLog");
-        FileHandler fh;
-        try {
-            File file = File.createTempFile("jediverse_json_log_", ".log");
-            System.out.format("JSON log file: %s\n", file.getAbsolutePath());
-            fh = new FileHandler(file.getAbsolutePath());
-            logger.setUseParentHandlers(false);
-            logger.addHandler(fh);
-            SimpleFormatter formatter = new SimpleFormatter();
-            fh.setFormatter(formatter);
-        } catch (SecurityException | IOException e) {
-            e.printStackTrace();
-        }
-        return logger;
-    }
-
     public static boolean isSameDay(Date date1, Date date2) {
         Calendar calendar1 = Calendar.getInstance();
         Calendar calendar2 = Calendar.getInstance();

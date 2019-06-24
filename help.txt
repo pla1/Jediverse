@@ -72,8 +72,17 @@ stream-direct
 timeline or tl
     Show timeline. Successive requests will start with the next status ID.
 
-toot
-    Post a status. Pass the text.
+post
+    Post a public status. Pass the text.
+
+post-direct
+    Post a direct status. Pass the text.
+
+post-private
+    Post a private status. Pass the text.
+
+post-unlisted
+    Post an unlisted status. Pass the text.
 
 unfav
     Unfavor a status. Pass the status index.

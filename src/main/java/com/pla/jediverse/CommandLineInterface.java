@@ -23,7 +23,9 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
+import java.util.logging.FileHandler;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,6 +43,8 @@ public class CommandLineInterface {
     private JsonArray jsonArrayFollowing = new JsonArray();
     private ArrayList<JsonElement> mediaArrayList = new ArrayList<>();
     private JsonArray jsonArrayAccounts = new JsonArray();
+    private File jsonLoggerFile;
+    private ArrayList<String> streams = new ArrayList<String>();
 
     private void clearGlobalVariables() {
         jsonArrayAccounts = new JsonArray();
@@ -61,6 +65,8 @@ public class CommandLineInterface {
                 quantity++;
             }
         }
+        webSockets.clear();
+        streams.clear();
         System.out.format("Closed %d WebSockets.\n", quantity);
     }
 
@@ -132,7 +138,7 @@ public class CommandLineInterface {
     private void setup() {
         //   console = new BufferedReader(new InputStreamReader(System.in));
         console = new Scanner(System.in);
-        logger = Utils.getLogger();
+        logger = getLogger();
         JsonArray settingsJsonArray = getSettings();
         while (settingsJsonArray == null || settingsJsonArray.size() == 0) {
             createApp();
@@ -193,6 +199,9 @@ public class CommandLineInterface {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
+            }
+            if ("about".equals(words[0])) {
+                about();
             }
             if ("upload-clear".equals(words[0])) {
                 clearMediaArrayList();
@@ -284,6 +293,7 @@ public class CommandLineInterface {
                     WebSocketListener webSocketListener = new WebSocketListener(stream);
                     WebSocket webSocket = client.newWebSocketBuilder().connectTimeout(Duration.ofSeconds(5)).buildAsync(URI.create(urlString), webSocketListener).join();
                     webSockets.add(webSocket);
+                    streams.add(stream);
                 }
             }
             if ("stop".equals(line)) {
@@ -295,21 +305,21 @@ public class CommandLineInterface {
             if ("notifications".equals(line) || "note".equals(line)) {
                 notifications("");
             }
-            if (words.length > 1 && "toot-direct".equals(words[0])) {
+            if (words.length > 1 && "post-direct".equals(words[0])) {
                 String text = line.substring(12);
-                toot(text, null, "direct");
+                postStatus(text, null, "direct");
             }
-            if (words.length > 1 && "toot".equals(words[0])) {
+            if (words.length > 1 && "post".equals(words[0])) {
                 String text = line.substring(5);
-                toot(text, null, "public");
+                postStatus(text, null, "public");
             }
-            if (words.length > 1 && "toot-private".equals(words[0])) {
+            if (words.length > 1 && "post-private".equals(words[0])) {
                 String text = line.substring(5);
-                toot(text, null, "private");
+                postStatus(text, null, "private");
             }
-            if (words.length > 1 && "toot-unlisted".equals(words[0])) {
+            if (words.length > 1 && "post-unlisted".equals(words[0])) {
                 String text = line.substring(5);
-                toot(text, null, "unlisted");
+                postStatus(text, null, "unlisted");
             }
             if (words.length > 2 && ("rep".equals(words[0]) || "reply".equals(words[0]))) {
                 if (Utils.isNumeric(words[1])) {
@@ -319,8 +329,8 @@ public class CommandLineInterface {
                     } else {
                         JsonElement jsonElement = jsonArrayAll.get(index);
                         String text = line.substring(line.indexOf(words[1]) + words[1].length());
-                        // TODO: 5/17/19  Get visibility from jsonElement to set the proper visibility on the reply.
-                        toot(text, Utils.getProperty(jsonElement, "id"), "unlisted");
+                        String visibility = Utils.getProperty(jsonElement, "visibility");
+                        postStatus(text, Utils.getProperty(jsonElement, "id"), visibility);
                     }
                 }
 
@@ -382,12 +392,16 @@ public class CommandLineInterface {
                 System.out.println(Utils.readFileToString("help.txt"));
             }
             if ("whoami".equals(line)) {
-                JsonElement jsonElement = whoami();
-                System.out.format("%s %s\n", Utils.getProperty(jsonElement, "username"), Utils.getProperty(jsonElement, "url"));
+                printWhoAmI();
             }
         }
 
 
+    }
+
+    private void printWhoAmI() {
+        JsonElement jsonElement = whoami();
+        System.out.format("%s %s\n", Utils.getProperty(jsonElement, "username"), Utils.getProperty(jsonElement, "url"));
     }
 
     private void listDeleteAccount(String listId, String accountIndex) {
@@ -654,7 +668,7 @@ public class CommandLineInterface {
     }
 
     // // TODO: 5/26/19 Reply from noteifications is picking up the wrong ID.
-    private void toot(String text, String inReplyToId, String visibility) {
+    private void postStatus(String text, String inReplyToId, String visibility) {
         String urlString = String.format("https://%s/api/v1/statuses", Utils.getProperty(settingsJsonObject, "instance"));
         JsonObject params = new JsonObject();
         params.addProperty("status", text);
@@ -670,7 +684,7 @@ public class CommandLineInterface {
             params.addProperty("in_reply_to_id", inReplyToId);
         }
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
-        System.out.format("Tooted: %s\n", jsonObject.get("url").getAsString());
+        System.out.format("Status posted: %s\n", jsonObject.get("url").getAsString());
         mediaArrayList.clear();
     }
 
@@ -821,7 +835,7 @@ public class CommandLineInterface {
         printJsonElements(jsonArray, null);
     }
 
-    private synchronized void printJsonElement(JsonElement jsonElement, String searchString) {
+    private synchronized void printJsonElement(JsonElement jsonElement, String searchString, String event) {
         jsonArrayAll.add(jsonElement);
         logger.info(jsonElement.toString());
         String symbol = Utils.SYMBOL_PENCIL;
@@ -849,6 +863,15 @@ public class CommandLineInterface {
             text = text.replaceAll(searchString, searchStringHighlighted);
         }
         String type = Utils.getProperty(jsonElement, "type");
+        if ("favourite".equals(type) && Utils.isBlank(text)) {
+            JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
+            if (Utils.isJsonObject(statusJe)) {
+                content = Utils.getProperty(statusJe, "content");
+                if (Utils.isNotBlank(content)) {
+                    text = Jsoup.parse(content).text();
+                }
+            }
+        }
         if ("follow".equals(type) && Utils.isBlank(text)) {
             text = String.format("followed you. %s", Utils.getProperty(accountJe, "url"));
         }
@@ -859,14 +882,22 @@ public class CommandLineInterface {
             }
         }
         String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
-        System.out.format("%d %s%s %s %s %s\n", jsonArrayAll.size() - 1, symbol, reblogLabel, dateDisplay, green(acct), text);
+        //    System.out.format("DEBUG: Reblog label \"%s\" event: \"%s\" Type \"%s\"\n", reblogLabel, event, type);
+        System.out.format("%d %s%s %s %s %s", jsonArrayAll.size() - 1, symbol, reblogLabel, dateDisplay, green(acct), text);
+        JsonArray attachments = jsonElement.getAsJsonObject().getAsJsonArray("media_attachments");
+        if (attachments != null) {
+            for (JsonElement a : attachments) {
+                System.out.format(" \uD83D\uDDBC");
+            }
+        }
+        System.out.format("\n");
     }
 
     private void printJsonElements(JsonArray jsonArray, String searchString) {
         int i = jsonArray.size() - 1;
         for (; i > -1; i--) {
             JsonElement jsonElement = jsonArray.get(i);
-            printJsonElement(jsonElement, searchString);
+            printJsonElement(jsonElement, searchString, null);
         }
     }
 
@@ -884,7 +915,7 @@ public class CommandLineInterface {
 
     private void notifications(String extra) {
         String urlString = String.format("https://%s/api/v1/notifications?limit=%d%s", settingsJsonObject.get("instance").getAsString(), getQuantity(), extra);
-        System.out.println(urlString);
+        //  System.out.println(urlString);
         JsonArray jsonArray = getJsonArray(urlString);
         int i = jsonArray.size() - 1;
         for (; i > -1; i--) {
@@ -906,6 +937,8 @@ public class CommandLineInterface {
             }
             if ("reblog".equals(type)) {
                 symbol = Utils.SYMBOL_REPEAT;
+                JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
+                text = Jsoup.parse(Utils.getProperty(statusJe, "content")).text();
             }
             if ("mention".equals(type)) {
                 symbol = Utils.SYMBOL_SPEAKER;
@@ -915,7 +948,7 @@ public class CommandLineInterface {
             JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
             String acct = Utils.getProperty(accountJe, "acct");
             //   System.out.format("\n\n%s %s %s\n%s\n", symbol, acct, text, jsonElement);
-            System.out.format("%d %s %s %s %s\n", jsonArrayAll.size() - 1, symbol, dateDisplay, green(acct), text);
+            System.out.format("%s %s %s %s\n", symbol, dateDisplay, green(acct), text);
         }
         System.out.format("%d items.\n", jsonArray.size());
     }
@@ -968,7 +1001,7 @@ public class CommandLineInterface {
 
     //// TODO: 5/24/19 Handle 500 exception on repeated unfollow request.
     private JsonObject postAsJson(URL url, String json) {
-        //      System.out.format("postAsJson URL: %s JSON: \n%s\n", url.toString(), json);
+        //    System.out.format("postAsJson URL: %s JSON: \n%s\n", url.toString(), json);
         HttpsURLConnection urlConnection;
         InputStream inputStream = null;
         OutputStream outputStream = null;
@@ -1081,7 +1114,7 @@ public class CommandLineInterface {
         }
         JsonElement jsonElement = jsonParser.parse(response.body());
         mediaArrayList.add(jsonElement);
-        System.out.format("File %s uploaded as ID %s. You have %d file(s) that will be attached to your next toot.\n",
+        System.out.format("File %s uploaded as ID %s. You have %d file(s) that will be attached to your next postStatus.\n",
                 fileName, Utils.getProperty(jsonElement, "id"), mediaArrayList.size());
     }
 
@@ -1092,7 +1125,7 @@ public class CommandLineInterface {
             System.out.format("%d files removed from the media queue. ", mediaArrayList.size());
             mediaArrayList.clear();
         }
-        System.out.println("Your next toot will not include any media attachments.");
+        System.out.println("Your next postStatus will not include any media attachments.");
     }
 
     private class WebSocketListener implements WebSocket.Listener {
@@ -1113,15 +1146,15 @@ public class CommandLineInterface {
                 JsonElement messageJsonElement = jsonParser.parse(sb.toString());
                 if (Utils.isJsonObject(messageJsonElement)) {
                     String event = Utils.getProperty(messageJsonElement, "event");
+                    String payloadString = messageJsonElement.getAsJsonObject().get("payload").getAsString();
                     if ("notification".equals(event)) {
                         playAudio();
                         System.out.format("%s", Utils.SYMBOL_SPEAKER);
                     }
-                    String payload = messageJsonElement.getAsJsonObject().get("payload").getAsString();
-                    if (Utils.isNotBlank(payload)) {
-                        JsonElement payloadJsonElement = jsonParser.parse(payload);
+                    if (Utils.isNotBlank(payloadString)) {
+                        JsonElement payloadJsonElement = jsonParser.parse(payloadString);
                         if (Utils.isJsonObject(payloadJsonElement)) {
-                            printJsonElement(payloadJsonElement, null);
+                            printJsonElement(payloadJsonElement, null, event);
                         }
                     } else {
                         System.out.format("Payload is blank.\n");
@@ -1172,4 +1205,39 @@ public class CommandLineInterface {
             return WebSocket.Listener.super.onBinary(webSocket, data, last);
         }
     }
+
+    private void about() {
+        System.out.format("Jediverse is a command line interface for the Fediverse. Jediverse was created by https://pla.social/pla. YMMV ☮\n");
+        System.out.format("Source %s\n", "https://github.com/pla1/Jediverse");
+        System.out.format("Website https://jediverse.com/\n");
+        System.out.format("JSON logging file %s\n", jsonLoggerFile.getAbsolutePath());
+        System.out.format("Settings file %s\n", getSettingsFileName());
+        System.out.format("User ");
+        printWhoAmI();
+        if (!webSockets.isEmpty()) {
+            System.out.format("Streams ");
+            for (String stream : streams) {
+                System.out.format("%s ", stream);
+            }
+            System.out.format("\n");
+        }
+    }
+
+    public Logger getLogger() {
+        Logger logger = Logger.getLogger("JediverseJsonLog");
+        FileHandler fh;
+        try {
+            jsonLoggerFile = File.createTempFile("jediverse_json_log_", ".log");
+            System.out.format("JSON log file: %s\n", jsonLoggerFile.getAbsolutePath());
+            fh = new FileHandler(jsonLoggerFile.getAbsolutePath());
+            logger.setUseParentHandlers(false);
+            logger.addHandler(fh);
+            SimpleFormatter formatter = new SimpleFormatter();
+            fh.setFormatter(formatter);
+        } catch (SecurityException | IOException e) {
+            e.printStackTrace();
+        }
+        return logger;
+    }
 }
+
