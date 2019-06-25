@@ -204,6 +204,9 @@ public class CommandLineInterface {
             if ("about".equals(words[0])) {
                 about();
             }
+            if ("blocks".equals(words[0])) {
+                blocks();
+            }
             if ("upload-clear".equals(words[0])) {
                 clearMediaArrayList();
             }
@@ -888,12 +891,15 @@ public class CommandLineInterface {
             text = text.replaceAll(searchString, searchStringHighlighted);
         }
         String type = Utils.getProperty(jsonElement, "type");
-        if ("favourite".equals(type) && Utils.isBlank(text)) {
-            JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
-            if (Utils.isJsonObject(statusJe)) {
-                content = Utils.getProperty(statusJe, "content");
-                if (Utils.isNotBlank(content)) {
-                    text = Jsoup.parse(content).text();
+        if ("favourite".equals(type)) {
+            symbol = Utils.SYMBOL_HEART;
+            if (Utils.isBlank(text)) {
+                JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
+                if (Utils.isJsonObject(statusJe)) {
+                    content = Utils.getProperty(statusJe, "content");
+                    if (Utils.isNotBlank(content)) {
+                        text = Jsoup.parse(content).text();
+                    }
                 }
             }
         }
@@ -981,7 +987,7 @@ public class CommandLineInterface {
             JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
             String acct = Utils.getProperty(accountJe, "acct");
             //   System.out.format("\n\n%s %s %s\n%s\n", symbol, acct, text, jsonElement);
-            System.out.format("%d %s %s %s %s\n", cyan(jsonArrayAll.size() - 1), symbol, dateDisplay, green(acct), text);
+            System.out.format("%s %s %s %s %s\n", cyan(jsonArrayAll.size() - 1), symbol, dateDisplay, green(acct), text);
         }
         System.out.format("%d items.\n", jsonArray.size());
     }
@@ -1275,5 +1281,23 @@ public class CommandLineInterface {
         logger.info(String.format("This file: %s", jsonLoggerFile.getAbsolutePath()));
         return logger;
     }
-}
 
+    private void blocks() {
+        String urlString = String.format("https://%s/api/v1/blocks", Utils.getProperty(settingsJsonObject, "instance"));
+        JsonArray jsonArray = getJsonArray(urlString);
+        logger.info(jsonArray.toString());
+        for (int i = 0; i < jsonArray.size(); i++) {
+            JsonElement jsonElement = jsonArray.get(i);
+            String displayName = Utils.getProperty(jsonElement, "display_name");
+            String acct = Utils.getProperty(jsonElement, "acct");
+            if (Utils.isBlank(displayName)) {
+                displayName = acct;
+            } else {
+                displayName = String.format("%s <%s> %s", displayName, acct, Utils.getProperty(jsonElement, "url"));
+            }
+            System.out.format("%s\n", displayName);
+        }
+        System.out.format("%d blocked accounts.\n", jsonArray.size());
+
+    }
+}
