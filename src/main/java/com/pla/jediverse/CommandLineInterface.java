@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.NumberFormat;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
@@ -1262,6 +1263,9 @@ public class CommandLineInterface {
             }
             System.out.format("\n");
         }
+        NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
+        long bytes = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        System.out.format("Memory used %s B\n", numberFormat.format(bytes));
     }
 
     public Logger getLogger() {
