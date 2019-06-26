@@ -1,4 +1,5 @@
 #!/bin/bash
+git pull
 mvn clean install
 java -cp "${HOME}/.m2/repository/com/google/code/gson/gson/2.8.5/*:\
 ${HOME}/.m2/repository/com/google/guava/guava/19.0/*:\
