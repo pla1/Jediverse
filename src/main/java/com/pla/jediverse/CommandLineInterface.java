@@ -327,7 +327,7 @@ public class CommandLineInterface {
                 String text = line.substring(5);
                 postStatus(text, null, "unlisted");
             }
-            if (words.length > 2 && ("rep".equals(words[0]) || "reply".equals(words[0]))) {
+            if (words.length > 2 && ("rep".equals(words[0])  || "reply".equals(words[0]))) {
                 if (Utils.isNumeric(words[1])) {
                     int index = Utils.getInt(words[1]);
                     if (index > jsonArrayAll.size()) {
@@ -335,7 +335,7 @@ public class CommandLineInterface {
                     } else {
                         JsonElement jsonElement = jsonArrayAll.get(index);
                         String type = Utils.getProperty(jsonElement, "type");
-                        if ("favourite".equals(type) || "reblog".equals(type)) {
+                        if ("favourite".equals(type) || "reblog".equals(type) || "follow".equals(type)) {
                             System.out.format("You can't reply to a %s.\n", type);
                         } else {
                             String text = line.substring(line.indexOf(words[1]) + words[1].length());
