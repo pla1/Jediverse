@@ -327,7 +327,7 @@ public class CommandLineInterface {
                 String text = line.substring(5);
                 postStatus(text, null, "unlisted");
             }
-            if (words.length > 2 && ("rep".equals(words[0])  || "reply".equals(words[0]))) {
+            if (words.length > 2 && ("rep".equals(words[0]) || "reply".equals(words[0]))) {
                 if (Utils.isNumeric(words[1])) {
                     int index = Utils.getInt(words[1]);
                     if (index > jsonArrayAll.size()) {
@@ -553,11 +553,16 @@ public class CommandLineInterface {
                 url = null;
             }
         }
+
+        ArrayList<Account> arrayListFollowing = new ArrayList<>();
         for (JsonElement jsonElement : jsonArrayFollowing) {
-            logger.info(gson.toJson(jsonElement));
-            System.out.format("%s %s\n", green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "username"));
+            arrayListFollowing.add(new Account(Utils.getProperty(jsonElement, "id"), Utils.getProperty(jsonElement, "acct"), Utils.getProperty(jsonElement, "display_name"), Utils.getProperty(jsonElement, "url")));
         }
-        System.out.format("Following %d accounts.\n", jsonArrayFollowing.size());
+        Collections.sort(arrayListFollowing);
+        for (Account account : arrayListFollowing) {
+            System.out.format("%s %s\n", green(account.getDisplayNameAndAccount()), account.getUrl());
+        }
+        System.out.format("\nFollowing %d accounts.\n", jsonArrayFollowing.size());
     }
 
     private JsonElement listCreate(String title) {
@@ -802,8 +807,8 @@ public class CommandLineInterface {
     private void accountSearch(String line) {
         String searchString = line.substring(15);
         String encodedQuery = Utils.urlEncodeComponent(searchString);
-        String urlString = String.format("https://%s/api/v1/accounts/search?q=%s",
-                Utils.getProperty(settingsJsonObject, "instance"), encodedQuery);
+        String urlString = String.format("https://%s/api/v1/accounts/search?q=%s", Utils.getProperty(settingsJsonObject, "instance"), encodedQuery);
+        System.out.format("Searching for account \"%s\". This may take some time.\n", line);
         jsonArrayAccounts = getJsonArray(urlString);
         int i = 0;
         for (JsonElement account : jsonArrayAccounts) {

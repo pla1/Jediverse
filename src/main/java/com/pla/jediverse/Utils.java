@@ -22,6 +22,7 @@ import java.util.TimeZone;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import java.util.regex.Pattern;
 
 public class Utils {
     public static final String ANSI_REVERSE_VIDEO = "\u001B[7m";
@@ -52,6 +53,23 @@ public class Utils {
     public static final String SYMBOL_MAILBOX = "\uD83D\uDCEA ";
     public static final String SYMBOL_REPEAT = "♻ ";
     public static final String SYMBOL_PICTURE_FRAME = "\uD83D\uDDBC";
+
+    public static int alphaComparison(String s1, String s2) {
+        if (s1 == null) {
+            return 1;
+        }
+        if (s2 == null) {
+            return -1;
+        }
+        return Utils.lettersAndSpaces(s1.toLowerCase()).trim().compareTo(Utils.lettersAndSpaces(s2.toLowerCase()).trim());
+    }
+
+    public static String lettersAndSpaces(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replaceAll("[^A-Za-z ]+","");
+    }
 
     public static String getAuthorizationString(String userProfile, String password) {
         StringBuilder buf = new StringBuilder();
