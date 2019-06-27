@@ -1,13 +1,16 @@
 Commands:
 
 aa
-    Add account to this program.
+    Add account to this program. Type aa and press ENTER for the Oauth dance. 
 
 audio
     Set the audio file used for a notification bell. The default is ding.wav. Set it to "none" to disable. Does not play mp3 files. Convert your mp3 file to wav using ffmpeg. Example: ffmpeg -i bell.mp3 bell.wav
 
 blocks
     List blocked accounts.
+
+da
+    Delete account from Jediverse program. Type da and press ENTER for a list of accounts. Choose which one to delete (remove). This doesn't delete the account. Just removes it from this program.
 
 fav
     Favorite a status. Pass the status index.
@@ -50,6 +53,9 @@ rep or reply
 
 quantity
     Set the quantity of statuses returned from timeline. Pass the quantity. Note: Server may or may not honor anything greater than 20.
+
+sa
+    Switch to another account in Jediverse. Type sa and press enter for a list of accounts.
 
 quit or exit
     Quit Jediverse CLI program.
