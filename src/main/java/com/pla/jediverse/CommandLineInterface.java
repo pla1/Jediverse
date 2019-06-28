@@ -607,6 +607,7 @@ public class CommandLineInterface {
         Utils.write(getSettingsFileName(), pretty);
         System.out.format("Audio file name now set to %s and settings saved for instance: %s\n",
                 audioFileName, Utils.getProperty(settingsJsonObject, "instance"));
+        playAudio();
     }
 
     private JsonObject chooseInstance(JsonArray settingsJsonArray) {
@@ -629,7 +630,7 @@ public class CommandLineInterface {
             }
             if (Utils.isNumeric(answer)) {
                 int index = Utils.getInt(answer);
-                if (index > settingsJsonArray.size() || settingsJsonArray.size() == 0) {
+                if (index >= settingsJsonArray.size() || settingsJsonArray.size() == 0) {
                     System.out.format("Instance number %d not found.\n", index);
                 } else {
                     settingsJsonObject = settingsJsonArray.get(index).getAsJsonObject();
@@ -724,10 +725,18 @@ public class CommandLineInterface {
         params.addProperty("website", "https://jediverse.com");
         String urlString = String.format("https://%s/api/v1/apps", instance);
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
+        if (!Utils.isJsonObject(jsonObject)) {
+            System.out.format("Something went wrong while creating app on instance \"%s\". Try again.\n", instance);
+            return;
+        }
         //   System.out.format("%s\n", jsonObject.toString());
         System.out.format("Go to https://%s/oauth/authorize?scope=%s&response_type=code&redirect_uri=%s&client_id=%s\n",
                 instance, Utils.urlEncodeComponent("write read follow push"), Utils.urlEncodeComponent(jsonObject.get("redirect_uri").getAsString()), jsonObject.get("client_id").getAsString());
         String token = ask("Paste the token and press ENTER.");
+        if (token == null || token.trim().length() < 20) {
+            System.out.format("Token \"%s\" doesn't look valid. Try again.\n", token);
+            return;
+        }
         urlString = String.format("https://%s/oauth/token", instance);
         params = new JsonObject();
         params.addProperty("client_id", jsonObject.get("client_id").getAsString());
