@@ -25,6 +25,7 @@ import java.util.logging.SimpleFormatter;
 import java.util.regex.Pattern;
 
 public class Utils {
+    public static final String OS = System.getProperty("os.name").toLowerCase();
     public static final String ANSI_REVERSE_VIDEO = "\u001B[7m";
     public static final String ANSI_BOLD = "\u001B[1m";
     public static final String ANSI_BLACK_BACKGROUND = "\u001B[40m";
@@ -523,6 +524,23 @@ public class Utils {
             return true;
         }
         return false;
+    }
+
+
+    public static boolean isWindows() {
+        return OS.contains("win");
+    }
+
+    public static boolean isMac() {
+        return OS.contains("mac");
+    }
+
+    public static boolean isUnix() {
+        return (OS.contains("nix") || OS.contains("nux") || OS.contains("aix"));
+    }
+
+    public static boolean isSolaris() {
+        return OS.contains("sunos");
     }
 
 }

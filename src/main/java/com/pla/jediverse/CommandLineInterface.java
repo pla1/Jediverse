@@ -1280,6 +1280,12 @@ public class CommandLineInterface {
         NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
         long bytes = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         System.out.format("Memory used %s B\n", numberFormat.format(bytes));
+        if (Utils.isUnix()) {
+            long pid = ProcessHandle.current().pid();
+            String[] commandParts = {"ps", "--pid", Long.toString(pid), "-o", "%cpu,%mem"};
+            String output = Utils.run(commandParts);
+            System.out.format("%s\n", output);
+        }
     }
 
     public Logger getLogger() {
