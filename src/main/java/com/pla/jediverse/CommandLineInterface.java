@@ -7,6 +7,8 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
+import javax.swing.*;
+import java.awt.*;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.URI;
@@ -198,6 +200,13 @@ public class CommandLineInterface {
             if (line.startsWith("upload") && words.length > 1) {
                 try {
                     upload(line);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            if (line.equals("upload-browser")) {
+                try {
+                    uploadWithFileBrowser();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -1323,5 +1332,15 @@ public class CommandLineInterface {
         }
         System.out.format("%d blocked accounts.\n", jsonArray.size());
 
+    }
+    private void uploadWithFileBrowser() throws Exception {
+        final JFileChooser fc = new JFileChooser();
+        int returnVal = fc.showOpenDialog(new Frame());
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            File file = fc.getSelectedFile();
+            upload(String.format("upload %s", file.getAbsolutePath()));
+        } else {
+            System.out.format("No files uploaded.\n");
+        }
     }
 }
