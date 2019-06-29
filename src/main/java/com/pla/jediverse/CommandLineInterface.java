@@ -1333,8 +1333,11 @@ public class CommandLineInterface {
         System.out.format("%d blocked accounts.\n", jsonArray.size());
 
     }
+
     private void uploadWithFileBrowser() throws Exception {
         final JFileChooser fc = new JFileChooser();
+        Action action = fc.getActionMap().get("viewTypeDetails");
+        action.actionPerformed(null);
         int returnVal = fc.showOpenDialog(new Frame());
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             File file = fc.getSelectedFile();
