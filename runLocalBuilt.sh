@@ -2,6 +2,9 @@
 #
 # Build Jediverse locally using git, wget, javac commands and then run it.
 #
+# Java property setting required to stop high CPU utilization after closing a WebSocket.
+# Reference:  -Djdk.tls.disabledAlgorithms=TLSv1.3 https://stackoverflow.com/questions/54485755/java-11-httpclient-leads-to-endless-ssl-loop
+#
 git pull
 if [ $? -ne 0 ]
 then
@@ -28,4 +31,4 @@ then
   wget 'https://repo1.maven.org/maven2/com/google/code/gson/gson/2.8.5/gson-2.8.5.jar' --output-document="$gson"
 fi
 javac -cp .:* src/main/java/com/pla/jediverse/*.java
-java -cp src/main/java:.:* com.pla.jediverse.CommandLineInterface
+java -Djdk.tls.disabledAlgorithms=TLSv1.3 -cp src/main/java:.:* com.pla.jediverse.CommandLineInterface

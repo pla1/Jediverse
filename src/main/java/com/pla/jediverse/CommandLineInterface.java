@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.NumberFormat;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
@@ -97,8 +96,7 @@ public class CommandLineInterface {
         System.exit(0);
     }
 
-    private static HttpRequest.BodyPublisher ofMimeMultipartData(Map<Object, Object> data,
-                                                                 String boundary) throws IOException {
+    private static HttpRequest.BodyPublisher ofMimeMultipartData(Map<Object, Object> data, String boundary) throws IOException {
         var byteArrays = new ArrayList<byte[]>();
         byte[] separator = ("--" + boundary + "\r\nContent-Disposition: form-data; name=")
                 .getBytes(StandardCharsets.UTF_8);
@@ -119,9 +117,6 @@ public class CommandLineInterface {
             }
         }
         byteArrays.add(("--" + boundary + "--").getBytes(StandardCharsets.UTF_8));
-        //      for (byte[] bytes:byteArrays) {
-        //          System.out.format("%s\n", new String(bytes));
-        //      }
         return HttpRequest.BodyPublishers.ofByteArrays(byteArrays);
     }
 
@@ -193,6 +188,7 @@ public class CommandLineInterface {
         while (!done) {
             line = readConsole();
             if (line == null) {
+                System.out.format("Line is null.\n");
                 done = true;
                 continue;
             }
@@ -844,15 +840,8 @@ public class CommandLineInterface {
     }
 
     private String ask(String prompt) {
-        //    String line;
         System.out.format("%s\n", prompt);
         return readConsole();
-        //     while (console.hasNext()) {
-        //         line = console.nextLine();
-        //         System.out.println(line);
-        //         return line;
-        //     }
-        //    return null;
     }
 
     private String readConsole() {
@@ -895,9 +884,8 @@ public class CommandLineInterface {
         String encodedQuery = Utils.urlEncodeComponent(searchString);
         String urlString = String.format("https://%s/api/v2/search?q=%s&limit=%d",
                 Utils.getProperty(settingsJsonObject, "instance"), encodedQuery, getQuantity());
-          System.out.println(urlString);
+        System.out.println(urlString);
         JsonElement jsonElement = getJsonElement(urlString);
-        //     System.out.format("%s\n", jsonElement);
         if (jsonElement != null) {
             printJsonElements(jsonElement.getAsJsonObject().getAsJsonArray("statuses"), searchString);
         } else {
@@ -916,7 +904,6 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/timelines/%s?limit=%d%s%s",
                 settingsJsonObject.get("instance").getAsString(), timeline, getQuantity(), extra, sinceIdFragment);
         JsonArray jsonArray = getJsonArray(urlString);
-        //    System.out.format("%s items: %d\n%s\n", urlString, jsonArray.size(), jsonArray.toString());
         if (jsonArray == null) {
             System.out.format("Failed to get timeline %s.\n", timeline);
             return;
@@ -1102,7 +1089,6 @@ public class CommandLineInterface {
 
     private void favourite(String id) {
         String urlString = String.format("https://%s/api/v1/statuses/%s/favourite", settingsJsonObject.get("instance").getAsString(), id);
-        //    System.out.println(urlString);
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), null);
         System.out.format("Favourited: %s\n", Utils.getProperty(jsonObject, "url"));
     }
@@ -1274,7 +1260,7 @@ public class CommandLineInterface {
                         System.out.format("Payload is blank.\n");
                     }
                 } else {
-                    //   System.out.format("JSON element is null.\n");
+                    //     System.out.format("JSON element is null.\n");
                 }
                 sb = new StringBuilder();
             } else {
@@ -1337,7 +1323,7 @@ public class CommandLineInterface {
             }
             System.out.format("\n");
         }
-       Utils.printResourceUtilization();
+        Utils.printResourceUtilization();
     }
 
     public Logger getLogger() {
@@ -1362,8 +1348,8 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/blocks", Utils.getProperty(settingsJsonObject, "instance"));
         JsonArray jsonArray = getJsonArray(urlString);
         if (jsonArray == null) {
-           System.out.format("List blocked accounts failed.\n") ;
-           return;
+            System.out.format("List blocked accounts failed.\n");
+            return;
         }
         logger.info(jsonArray.toString());
         for (int i = 0; i < jsonArray.size(); i++) {
