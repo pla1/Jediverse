@@ -4,6 +4,10 @@ aa
     Add account to this program. Type aa and press ENTER for the Oauth dance.
     https://www.youtube.com/watch?v=x_mlhQF1SFs
 
+account-search
+    Search for an account.
+    https://youtu.be/5PZIHVGomr0
+
 audio
     Set the audio file used for a notification bell. The default is ding.wav. Set it to "none" to disable. Does not play mp3 files. Convert your mp3 file to wav using ffmpeg. Example: ffmpeg -i bell.mp3 bell.wav
     https://youtu.be/mjZmlKV2tts

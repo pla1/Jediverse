@@ -35,9 +35,9 @@ import java.util.regex.Pattern;
 
 /**
  * Notes on which type of console to use.
- * BufferedReader thread safe, fast 👍 throws Exceptions 👎
- * Scanner not threadsafe 👎
- * Console doesn't work in IDE, doesn't recognize Ctrl-d. 👎
+ * java.io.BufferedReader thread safe, fast 👍 throws Exceptions 👎
+ * java.util.Scanner not threadsafe 👎
+ * java.io.Console doesn't work in IDE, doesn't recognize Ctrl-d. 👎
  */
 
 
@@ -859,6 +859,9 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/accounts/search?q=%s", Utils.getProperty(settingsJsonObject, "instance"), encodedQuery);
         System.out.format("Searching for account \"%s\". This may take some time.\n", line);
         jsonArrayAccounts = getJsonArray(urlString);
+        if (jsonArrayAccounts == null) {
+            System.out.format("Account search failed for \"%s\".\n", line);
+        }
         int i = 0;
         for (JsonElement account : jsonArrayAccounts) {
             System.out.format("%d %s %s %s %s %s\n",
@@ -903,6 +906,10 @@ public class CommandLineInterface {
                 settingsJsonObject.get("instance").getAsString(), timeline, getQuantity(), extra, sinceIdFragment);
         JsonArray jsonArray = getJsonArray(urlString);
         //    System.out.format("%s items: %d\n%s\n", urlString, jsonArray.size(), jsonArray.toString());
+        if (jsonArray == null) {
+            System.out.format("Failed to get timeline %s.\n", timeline);
+            return;
+        }
         printJsonElements(jsonArray, null);
     }
 
@@ -1009,8 +1016,11 @@ public class CommandLineInterface {
 
     private void notifications(String extra) {
         String urlString = String.format("https://%s/api/v1/notifications?limit=%d%s", settingsJsonObject.get("instance").getAsString(), getQuantity(), extra);
-        //  System.out.println(urlString);
         JsonArray jsonArray = getJsonArray(urlString);
+        if (jsonArray == null) {
+            System.out.format("Listing notifications failed.\n");
+            return;
+        }
         int i = jsonArray.size() - 1;
         for (; i > -1; i--) {
             JsonElement jsonElement = jsonArray.get(i);
@@ -1284,7 +1294,6 @@ public class CommandLineInterface {
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             System.out.format("WebSocket closed. Status code: %d Reason: %s Stream: %s\n.", statusCode, reason, stream);
             webSocket.abort();
-            webSocket = null;
             return Listener.super.onClose(webSocket, statusCode, reason);
         }
 
@@ -1349,6 +1358,10 @@ public class CommandLineInterface {
     private void blocks() {
         String urlString = String.format("https://%s/api/v1/blocks", Utils.getProperty(settingsJsonObject, "instance"));
         JsonArray jsonArray = getJsonArray(urlString);
+        if (jsonArray == null) {
+           System.out.format("List blocked accounts failed.\n") ;
+           return;
+        }
         logger.info(jsonArray.toString());
         for (int i = 0; i < jsonArray.size(); i++) {
             JsonElement jsonElement = jsonArray.get(i);

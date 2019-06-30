@@ -15,10 +15,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Scanner;
-import java.util.TimeZone;
+import java.util.*;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -72,14 +69,6 @@ public class Utils {
         return s.replaceAll("[^A-Za-z ]+","");
     }
 
-    public static String getAuthorizationString(String userProfile, String password) {
-        StringBuilder buf = new StringBuilder();
-        buf.append("Basic ");
-        String userProfileAndPassword = String.format("%s:%s", userProfile, password);
-        String base64Encoded = BaseEncoding.base64().encode(userProfileAndPassword.getBytes());
-        buf.append(base64Encoded.replaceAll("\n", ""));
-        return buf.toString();
-    }
 
     public static boolean isBlank(String s) {
         return (s == null || s.trim().length() == 0);
@@ -519,10 +508,7 @@ public class Utils {
         if ("y".equalsIgnoreCase(s)) {
             return true;
         }
-        if ("1".equalsIgnoreCase(s)) {
-            return true;
-        }
-        return false;
+        return "1".equalsIgnoreCase(s);
     }
 
 
