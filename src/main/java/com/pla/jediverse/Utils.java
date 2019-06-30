@@ -333,7 +333,6 @@ public class Utils {
         }
         return uri;
     }
-
     public static boolean isSameDay(Date date1, Date date2) {
         Calendar calendar1 = Calendar.getInstance();
         Calendar calendar2 = Calendar.getInstance();

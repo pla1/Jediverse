@@ -1,109 +1,148 @@
 Commands:
 
 aa
-    Add account to this program. Type aa and press ENTER for the Oauth dance. https://www.youtube.com/watch?v=x_mlhQF1SFs
+    Add account to this program. Type aa and press ENTER for the Oauth dance.
+    https://www.youtube.com/watch?v=x_mlhQF1SFs
 
 audio
-    Set the audio file used for a notification bell. The default is ding.wav. Set it to "none" to disable. Does not play mp3 files. Convert your mp3 file to wav using ffmpeg. Example: ffmpeg -i bell.mp3 bell.wav https://youtu.be/mjZmlKV2tts
+    Set the audio file used for a notification bell. The default is ding.wav. Set it to "none" to disable. Does not play mp3 files. Convert your mp3 file to wav using ffmpeg. Example: ffmpeg -i bell.mp3 bell.wav
+    https://youtu.be/mjZmlKV2tts
 
 blocks
-    List blocked accounts. https://youtu.be/Lhd-MGhCTRQ
+    List blocked accounts.
+    https://youtu.be/Lhd-MGhCTRQ
+
+clear
+    Clear the console
+    https://youtu.be/RZEA3q1mK5w
 
 da
-    Delete account from Jediverse program. Type da and press ENTER for a list of accounts. Choose which one to delete (remove). This doesn't delete the account. Just removes it from this program. https://www.youtube.com/watch?v=3xB_sIS8eZY
+    Delete account from Jediverse program. Type da and press ENTER for a list of accounts. Choose which one to delete (remove). This doesn't delete the account. Just removes it from this program.
+    https://www.youtube.com/watch?v=3xB_sIS8eZY
 
 fav
-    Favorite a status. Pass the status index. https://youtu.be/Xt2d_J9lTkg
+    Favorite a status. Pass the status index.
+    https://youtu.be/Xt2d_J9lTkg
 
 fed
-    Show federated timeline. https://youtu.be/rjq9AkEFPfM
+    Show federated timeline.
+    https://youtu.be/rjq9AkEFPfM
 
 following
-    List the accounts you are following. This may take a few minutes if you are following many accounts. https://youtu.be/EQDzz2TQgT8
+    List the accounts you are following. This may take a few minutes if you are following many accounts.
+    https://youtu.be/EQDzz2TQgT8
 
 go
-    Open your default browser to the status. Pass the status index. Uses xdg-open. YMMV. https://youtu.be/Qt3YnQ2LAVo
+    Open your default browser to the status. Pass the status index. Uses xdg-open. YMMV.
+    https://youtu.be/Qt3YnQ2LAVo
 
 help or ?
     Show this help file.
 
 list-accounts
     Show accounts on list. Pass the list ID from the lists output.
+    https://youtu.be/9zkLvOPvBMk
 
 list-add-accounts
     Add accounts to a list. It will add users from your following list based on the name you provide. Pass the list number and the user name.
+    https://youtu.be/cmRZu8kZ20w
 
 list-create
     Create a new list. Pass the title.
+    https://youtu.be/7_bbBNip8Z0
 
 list-delete
     Delete a list. Pass the id of the list.
+    https://youtu.be/rQykkM022CQ
 
 list-delete-account
     Delete an account from a list. Pass the list ID and account ID.
+    https://youtu.be/OEDS2AflZwc
 
 lists
     Show lists
+    https://youtu.be/RKV8dNrMuSs
 
 local
     Show local timeline
+    https://youtu.be/5vKTx-gDUKw
 
 notifications or note
     Show notifications.
+    https://youtu.be/VGEW3zmuy_A
 
 rep or reply
     Reply to a message.
+    https://youtu.be/1btj6iAa1t4
 
 quantity
     Set the quantity of statuses returned from timeline. Pass the quantity. Note: Server may or may not honor anything greater than 20.
+    https://youtu.be/uXJqghVa20U
 
 sa
     Switch to another account in Jediverse. Type sa and press enter for a list of accounts.
+    https://youtu.be/en-NWcesCaQ
 
 quit or exit
     Quit Jediverse CLI program.
+    https://youtu.be/OJwM0CPfShY
 
 search
     Search for content in accounts, statuses and hashtags.
+    https://youtu.be/QBCozAa3eBQ
 
 stream-hashtag
     Stream a hashtag. Example: stream-hashtag #cycling
+    https://youtu.be/PFss_6VEpso
 
 stream-public
     Stream public statuses.
+    https://youtu.be/JL1TR0sz9_w
 
 stream-public-local
     Stream local status.
+    https://youtu.be/F0efaE4Lcfc
 
 stream-user
     Stream events that are relevant to the user.
+    https://youtu.be/Ez0Xhzb1zvs
 
 stream-direct
     Stream direct messages.
+    https://youtu.be/pvOuzs9H0FU
 
 timeline or tl
     Show timeline. Successive requests will start with the next status ID.
+    https://youtu.be/vywR7LNymkA
 
 post
     Post a public status. Pass the text.
+    https://youtu.be/_WdhV6in8Ao
 
 post-direct
     Post a direct status. Pass the text.
+    https://youtu.be/RkGsO_nJ-OI
 
 post-private
     Post a private status. Pass the text.
+    https://youtu.be/zMjKO4QkGC8
 
 post-unlisted
     Post an unlisted status. Pass the text.
+    https://youtu.be/hEi1BKzgqaI
 
 unfav
     Unfavor a status. Pass the status index.
+    https://youtu.be/eFaypvzbVso
 
 upload
     Upload media file to be attached to your next toot.
+    https://youtu.be/5jOz-uEIBCI
 
 upload-clear
     Clears the media file attachment queue in-case you changed your mind. Your next toot will not include any media attachments.
+    https://youtu.be/u_PFodgc0ec
 
 url
-    Show url for the status. Pass the status index. 
+    Show url for the status. Pass the status index.
+    https://youtu.be/lhzZkIycvTo

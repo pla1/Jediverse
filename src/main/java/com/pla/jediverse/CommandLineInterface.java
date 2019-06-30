@@ -33,10 +33,19 @@ import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Notes on which type of console to use.
+ * BufferedReader thread safe, fast 👍 throws Exceptions 👎
+ * Scanner not threadsafe 👎
+ * Console doesn't work in IDE, doesn't recognize Ctrl-d. 👎
+ */
+
 
 public class CommandLineInterface {
-    // private static BufferedReader console;
-    private static Scanner console;
+
+    private static BufferedReader console;
+    // private static Scanner console;
+    //  private static Console console;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final int DEFAULT_QUANTITY = 20;
     private final String DEFAULT_AUDIO_FILE_NAME = "ding.wav";
@@ -140,8 +149,10 @@ public class CommandLineInterface {
     }
 
     private void setup() {
-        //   console = new BufferedReader(new InputStreamReader(System.in));
-        console = new Scanner(System.in);
+        console = new BufferedReader(new InputStreamReader(System.in));
+        //   console = new Scanner(System.in);
+        //    console = System.console();
+        //    console.readLine("This is a test");
         logger = getLogger();
         JsonArray settingsJsonArray = getSettings();
         while (settingsJsonArray == null || settingsJsonArray.size() == 0) {
@@ -178,15 +189,24 @@ public class CommandLineInterface {
 
     private void mainRoutine() throws Exception {
         String line;
-        while (console.hasNext()) {
-            line = console.nextLine();
-            if (Utils.isBlank(line)) {
+        boolean done = false;
+        while (!done) {
+            line = readConsole();
+            if (line == null) {
+                done = true;
+                continue;
+            }
+            if (line.trim().length() == 0) {
                 System.out.format("Line is blank. %s\n", line);
                 continue;
             }
             String[] words = line.split("\\s+");
             if (line.startsWith("search") && words.length > 1) {
                 search(line);
+            }
+            if ("clear".equals(words[0])) {
+                System.out.print("\033[H\033[2J");
+                System.out.flush();
             }
             if ("account-search".equals(words[0]) && words.length > 1) {
                 accountSearch(line);
@@ -301,7 +321,6 @@ public class CommandLineInterface {
                     stream = String.format("hashtag&tag=%s", Utils.urlEncodeComponent(words[1]));
                 }
                 if (Utils.isNotBlank(stream)) {
-                    //       var client = HttpClient.newHttpClient();
                     HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
                     String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
                             Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
@@ -408,11 +427,11 @@ public class CommandLineInterface {
                     continue;
                 }
                 JsonElement jsonElement = jsonArrayAll.get(index);
-                System.out.format("Fav this: %s\n", jsonElement.toString());
                 unfavourite(Utils.getProperty(jsonElement, "id"));
             }
             if ("quit".equals(line) || "exit".equals(line)) {
-                System.exit(0);
+                done = true;
+
             }
             if ("help".equals(line) || "?".equals(line)) {
                 System.out.println(Utils.readFileToString("help.txt"));
@@ -421,8 +440,9 @@ public class CommandLineInterface {
                 printWhoAmI();
             }
         }
-
-
+        System.out.format("Bye bye\n");
+        Utils.close(console);
+        System.exit(0);
     }
 
     private void printWhoAmI() {
@@ -695,6 +715,7 @@ public class CommandLineInterface {
                 logger.info(gson.toJson(jsonElement));
                 System.out.format("%d %s %s %s\n", i++, green(Utils.getProperty(jsonElement, "acct")), Utils.getProperty(jsonElement, "display_name"), Utils.getProperty(jsonElement, "url"));
             }
+            System.out.format("%d accounts on list %s.\n", jsonArray.size(), listId);
         }
         return jsonArray;
     }
@@ -812,14 +833,24 @@ public class CommandLineInterface {
     }
 
     private String ask(String prompt) {
-        String line;
+        //    String line;
         System.out.format("%s\n", prompt);
-        while (console.hasNext()) {
-            line = console.nextLine();
-            System.out.println(line);
-            return line;
+        return readConsole();
+        //     while (console.hasNext()) {
+        //         line = console.nextLine();
+        //         System.out.println(line);
+        //         return line;
+        //     }
+        //    return null;
+    }
+
+    private String readConsole() {
+        try {
+            return console.readLine();
+        } catch (IOException e) {
+            System.out.format("%s\n", e.getLocalizedMessage());
+            return "";
         }
-        return null;
     }
 
     private void accountSearch(String line) {
@@ -848,9 +879,9 @@ public class CommandLineInterface {
     private void search(String line) {
         String searchString = line.substring(7);
         String encodedQuery = Utils.urlEncodeComponent(searchString);
-        String urlString = String.format("https://%s/api/v2/search?q=%s",
-                Utils.getProperty(settingsJsonObject, "instance"), encodedQuery);
-        //  System.out.println(urlString);
+        String urlString = String.format("https://%s/api/v2/search?q=%s&limit=%d",
+                Utils.getProperty(settingsJsonObject, "instance"), encodedQuery, getQuantity());
+          System.out.println(urlString);
         JsonElement jsonElement = getJsonElement(urlString);
         //     System.out.format("%s\n", jsonElement);
         if (jsonElement != null) {
