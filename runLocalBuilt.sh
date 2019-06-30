@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Build Jediverse locally using git, wget, javac commands and then run it.
+#
 git pull
 if [ $? -ne 0 ]
 then

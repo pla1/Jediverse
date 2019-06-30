@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Build Jediverse with git, mvn commands and run it.
+#
 git pull
 mvn clean install
 java -cp "${HOME}/.m2/repository/com/google/code/gson/gson/2.8.5/*:\
