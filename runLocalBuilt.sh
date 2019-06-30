@@ -18,5 +18,5 @@ then
   echo "Downloading $jsoup."
   wget 'https://github.com/jhy/jsoup/releases/tag/jsoup-1.11.3' --output-document="$jsoup"
 fi
-java -cp .:* com.pla.jediverse.CommandLineInterface
+java -cp .:src/main:* com.pla.jediverse.CommandLineInterface
 
