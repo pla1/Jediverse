@@ -36,6 +36,8 @@ following
     List the accounts you are following. This may take a few minutes if you are following many accounts.
     https://youtu.be/EQDzz2TQgT8
 
+gc  Suggest Java garbage collection
+
 go
     Open your default browser to the status. Pass the status index. Uses xdg-open. YMMV.
     https://youtu.be/Qt3YnQ2LAVo
@@ -140,11 +142,16 @@ unfav
     https://youtu.be/eFaypvzbVso
 
 upload
-    Upload media file to be attached to your next toot.
+    Upload media file to be attached to your next post.
     https://youtu.be/5jOz-uEIBCI
 
+upload-browse
+    Upload media file to be attached to your next post. Uses the Java file chooser, the only GUI feature in Jediverse.
+    https://youtu.be/Y6SPEbAA8b0
+
+
 upload-clear
-    Clears the media file attachment queue in-case you changed your mind. Your next toot will not include any media attachments.
+    Clears the media file attachment queue in-case you changed your mind. Your next post will not include any media attachments.
     https://youtu.be/u_PFodgc0ec
 
 url

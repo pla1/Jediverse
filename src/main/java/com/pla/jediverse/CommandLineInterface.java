@@ -57,7 +57,7 @@ public class CommandLineInterface {
     private ArrayList<JsonElement> mediaArrayList = new ArrayList<>();
     private JsonArray jsonArrayAccounts = new JsonArray();
     private File jsonLoggerFile;
-    private ArrayList<String> streams = new ArrayList<String>();
+    private ArrayList<String> streams = new ArrayList<>();
 
     private void clearGlobalVariables() {
         jsonArrayAccounts = new JsonArray();
@@ -224,7 +224,7 @@ public class CommandLineInterface {
                     e.printStackTrace();
                 }
             }
-            if (line.equals("upload-browser")) {
+            if (line.startsWith("upload-browse")) {
                 try {
                     uploadWithFileBrowser();
                 } catch (Exception e) {
@@ -236,6 +236,13 @@ public class CommandLineInterface {
             }
             if ("blocks".equals(words[0])) {
                 blocks();
+            }
+            if ("gc".equals(words[0])) {
+                System.out.format("\nGarbage collection suggested\n\nBefore:\n");
+                Utils.printResourceUtilization();
+                System.gc();
+                System.out.format("\nAfter\n");
+                Utils.printResourceUtilization();
             }
             if ("upload-clear".equals(words[0])) {
                 clearMediaArrayList();
@@ -698,6 +705,10 @@ public class CommandLineInterface {
     private void lists() {
         String urlString = String.format("https://%s/api/v1/lists", Utils.getProperty(settingsJsonObject, "instance"));
         JsonArray jsonArray = getJsonArray(urlString);
+        if (jsonArray == null) {
+            System.out.format("Failed to retrieve lists.\n");
+            return;
+        }
         for (JsonElement jsonElement : jsonArray) {
             logger.info(gson.toJson(jsonElement));
             System.out.format("%s %s\n", cyan(Utils.getProperty(jsonElement, "id")), Utils.getProperty(jsonElement, "title"));
@@ -1326,15 +1337,7 @@ public class CommandLineInterface {
             }
             System.out.format("\n");
         }
-        NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
-        long bytes = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-        System.out.format("Memory used %s B\n", numberFormat.format(bytes));
-        if (Utils.isUnix()) {
-            long pid = ProcessHandle.current().pid();
-            String[] commandParts = {"ps", "--pid", Long.toString(pid), "-o", "%cpu,%mem"};
-            String output = Utils.run(commandParts);
-            System.out.format("%s\n", output);
-        }
+       Utils.printResourceUtilization();
     }
 
     public Logger getLogger() {

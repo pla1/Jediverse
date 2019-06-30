@@ -1,7 +1,6 @@
 package com.pla.jediverse;
 
 
-import com.google.common.io.BaseEncoding;
 import com.google.gson.*;
 
 import javax.sound.sampled.AudioInputStream;
@@ -13,13 +12,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.logging.FileHandler;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-import java.util.regex.Pattern;
 
 public class Utils {
     public static final String OS = System.getProperty("os.name").toLowerCase();
@@ -526,6 +522,17 @@ public class Utils {
 
     public static boolean isSolaris() {
         return OS.contains("sunos");
+    }
+    public static void printResourceUtilization() {
+        NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
+        long bytes = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        System.out.format("Memory used %s B\n", numberFormat.format(bytes));
+        if (Utils.isUnix()) {
+            long pid = ProcessHandle.current().pid();
+            String[] commandParts = {"ps", "--pid", Long.toString(pid), "-o", "%cpu,%mem"};
+            String output = Utils.run(commandParts);
+            System.out.format("%s\n", output);
+        }
     }
 
 }
