@@ -8,6 +8,7 @@ then
 fi
 guava="guava-23.0.jar"
 jsoup="jsoup-1.11.3.jar"
+gson="gson-2.8.5.jar"
 if [ ! -f "$guava" ]
 then
   echo "Downloading $guava."
@@ -16,7 +17,12 @@ fi
 if [ ! -f "$jsoup" ]
 then
   echo "Downloading $jsoup."
-  wget 'https://github.com/jhy/jsoup/releases/tag/jsoup-1.11.3' --output-document="$jsoup"
+  wget 'https://jsoup.org/packages/jsoup-1.11.3.jar' --output-document="$jsoup"
 fi
-javac -cp .:src/main:* src/main/com/pla/jediverse/*
-
+if [ ! -f "$gson" ]
+then
+  echo "Downloading $gson."
+  wget 'https://repo1.maven.org/maven2/com/google/code/gson/gson/2.8.5/gson-2.8.5.jar' --output-document="$gson"
+fi
+javac -cp .:* src/main/java/com/pla/jediverse/*.java
+java -cp src/main/java:.:* com.pla.jediverse.CommandLineInterface
