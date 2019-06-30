@@ -1,5 +1,5 @@
 .*
 !/.gitignore
 target/
-*.classes
+src/main/java/com/pla/jediverse/*.classes
 *.jar
