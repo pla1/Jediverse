@@ -8,6 +8,12 @@ account-search
     Search for an account.
     https://youtu.be/5PZIHVGomr0
 
+account-follow
+    Follow an account. You should have performed account-search prior to this. That will provide a list of accounts you can follow. Use the index number for the accounts from the search results. Example account-follow 123.
+
+account-unfollow
+    Un-follow an account. You should have performed account-search prior to this. That will provide a list of accounts you can un-follow. Use the index number for the accounts from the search results. Example account-unfollow 123.
+
 audio
     Set the audio file used for a notification bell. The default is ding.wav. Set it to "none" to disable. Does not play mp3 files. Convert your mp3 file to wav using ffmpeg. Example: ffmpeg -i bell.mp3 bell.wav
     https://youtu.be/mjZmlKV2tts
