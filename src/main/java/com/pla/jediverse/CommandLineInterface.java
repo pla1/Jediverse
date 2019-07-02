@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
@@ -182,7 +183,7 @@ public class CommandLineInterface {
         return quantity;
     }
 
-    private void mainRoutine() throws Exception {
+    private void mainRoutine()  {
         String line;
         boolean done = false;
         while (!done) {
@@ -197,7 +198,7 @@ public class CommandLineInterface {
                 continue;
             }
             String[] words = line.split("\\s+");
-            if (line.startsWith("search") && words.length > 1) {
+            if ("search".equals(words[0]) && words.length > 1) {
                 search(line);
             }
             if ("clear".equals(words[0])) {
@@ -709,6 +710,7 @@ public class CommandLineInterface {
             logger.info(gson.toJson(jsonElement));
             System.out.format("%s %s\n", cyan(Utils.getProperty(jsonElement, "id")), Utils.getProperty(jsonElement, "title"));
         }
+        System.out.format("%d lists.\n", jsonArray.size());
     }
 
     private JsonArray listAccounts(String listId) {
@@ -862,6 +864,7 @@ public class CommandLineInterface {
         if (jsonArrayAccounts == null) {
             System.out.format("Account search failed for \"%s\".\n", line);
         }
+        System.out.format("%d results for \"%s\".\n", jsonArrayAccounts.size(), line);
         int i = 0;
         for (JsonElement account : jsonArrayAccounts) {
             System.out.format("%d %s %s %s %s %s\n",
@@ -869,13 +872,40 @@ public class CommandLineInterface {
         }
         if (jsonArrayAccounts.size() == 1) {
             System.out.format("Use account-follow 0 or account-unfollow 0.\n");
-        } else {
-            if (jsonArrayAccounts.size() > 1) {
-                System.out.format("Use account-follow 0 through %d or account-unfollow 0 through %d.\n",
-                        jsonArrayAccounts.size() - 1, jsonArrayAccounts.size() - 1);
-            } else {
-                System.out.format("No accounts found with \"%s\"\n.", searchString);
+        }
+        if (jsonArrayAccounts.size() > 1) {
+            System.out.format("Use account-follow 0 through %d or account-unfollow 0 through %d.\n",
+                    jsonArrayAccounts.size() - 1, jsonArrayAccounts.size() - 1);
+        }
+    }
+
+    private void printHashtags(JsonArray hashtags) {
+        if (hashtags.size() == 0) {
+            return;
+        }
+        System.out.format("\n\nHashtags\n");
+        for (JsonElement je : hashtags) {
+            JsonObject hashtag = je.getAsJsonObject();
+            JsonArray history = hashtag.getAsJsonArray("history");
+            for (JsonElement historyElement : history) {
+                long day = Utils.getLong(Utils.getProperty(historyElement, "day"));
+                Date date = new Date(day * 1000);
+                System.out.format("%s %s\t", Utils.getProperty(historyElement, "uses"), Utils.getFullDate(date));
             }
+            System.out.format("%s\t%s\n", Utils.getProperty(hashtag, "name"), Utils.getProperty(hashtag, "url"));
+        }
+    }
+
+    private void printAccounts(JsonArray accounts) {
+        if (accounts.size() == 0) {
+            return;
+        }
+        System.out.format("\n\nAccounts\n");
+        for (JsonElement je : accounts) {
+            JsonObject account = je.getAsJsonObject();
+            String displayName = getAccountDisplayName(account);
+            String note =  Jsoup.parse(Utils.getProperty(account, "note")).text();
+            System.out.format("%s %s %s\n", green(displayName), Utils.getProperty(account, "url"), note);
         }
     }
 
@@ -884,10 +914,16 @@ public class CommandLineInterface {
         String encodedQuery = Utils.urlEncodeComponent(searchString);
         String urlString = String.format("https://%s/api/v2/search?q=%s&limit=%d",
                 Utils.getProperty(settingsJsonObject, "instance"), encodedQuery, getQuantity());
-        System.out.println(urlString);
         JsonElement jsonElement = getJsonElement(urlString);
         if (jsonElement != null) {
-            printJsonElements(jsonElement.getAsJsonObject().getAsJsonArray("statuses"), searchString);
+            JsonArray statuses = jsonElement.getAsJsonObject().getAsJsonArray("statuses");
+            JsonArray hashtags = jsonElement.getAsJsonObject().getAsJsonArray("hashtags");
+            JsonArray accounts = jsonElement.getAsJsonObject().getAsJsonArray("accounts");
+            System.out.format("%d statuses %d hasttags and %d accounts when searching for \"%s\".\n", statuses.size(), hashtags.size(), accounts.size(), searchString);
+            printHashtags(hashtags);
+            printAccounts(accounts);
+            System.out.format("\n\nStatuses\n");
+            printJsonElements(statuses, searchString);
         } else {
             System.out.format("Search failed for: %s.\n", searchString);
         }
@@ -909,6 +945,17 @@ public class CommandLineInterface {
             return;
         }
         printJsonElements(jsonArray, null);
+    }
+
+    private String getAccountDisplayName(JsonElement account) {
+        String acct = Utils.getProperty(account, "acct");
+        String displayName = Utils.getProperty(account, "display_name");
+        if (Utils.isNotBlank(displayName)) {
+            displayName = String.format("%s <%s>", displayName, acct);
+        } else {
+            displayName = acct;
+        }
+        return displayName;
     }
 
     private synchronized void printJsonElement(JsonElement jsonElement, String searchString, String event) {
@@ -933,13 +980,7 @@ public class CommandLineInterface {
         if (!Utils.isJsonObject(accountJe)) {
             return;
         }
-        String acct = Utils.getProperty(accountJe, "acct");
-        String displayName = Utils.getProperty(accountJe, "display_name");
-        if (Utils.isNotBlank(displayName)) {
-            displayName = String.format("%s <%s>", displayName, acct);
-        } else {
-            displayName = acct;
-        }
+        String displayName = getAccountDisplayName(accountJe);
         String createdAt = Utils.getProperty(jsonElement, "created_at");
         String content = Utils.getProperty(jsonElement, "content");
         String text = "";
@@ -1271,7 +1312,7 @@ public class CommandLineInterface {
 
         @Override
         public CompletionStage<?> onPing(WebSocket webSocket, ByteBuffer message) {
-            System.out.format("onPing Message: %s\n", message);
+       //     System.out.format("onPing Message: %s\n", message);
             return Listener.super.onPing(webSocket, message);
         }
 

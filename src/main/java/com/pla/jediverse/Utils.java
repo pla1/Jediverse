@@ -534,5 +534,9 @@ public class Utils {
             System.out.format("%s\n", output);
         }
     }
+    public static String getFullDate(Date date) {
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE MMM dd yyyy");
+        return sdf.format(date);
+    }
 
 }
