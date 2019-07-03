@@ -531,12 +531,16 @@ public class Utils {
             long pid = ProcessHandle.current().pid();
             String[] commandParts = {"ps", "--pid", Long.toString(pid), "-o", "%cpu,%mem"};
             String output = Utils.run(commandParts);
-            System.out.format("%s\n", output);
+            System.out.format("PID %d\n%s\n", pid, output);
         }
     }
     public static String getFullDate(Date date) {
         SimpleDateFormat sdf = new SimpleDateFormat("EEE MMM dd yyyy");
         return sdf.format(date);
+    }
+    public static void printProperties() {
+        Properties p = System.getProperties();
+        p.list(System.out);
     }
 
 }
