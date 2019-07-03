@@ -2,8 +2,8 @@
 #
 # Build Jediverse with git, mvn commands and run it.
 #
-# Java property setting required to stop high CPU utilization after closing a WebSocket.
-# Reference:  -Djdk.tls.disabledAlgorithms=TLSv1.3 https://stackoverflow.com/questions/54485755/java-11-httpclient-leads-to-endless-ssl-loop
+# There is a bug with HttpClient in OpenJDK 11.0.3+7 that creates a CPU spike.
+# Use OpenJDK 12 from https://adoptopenjdk.net
 #
 git pull
 mvn clean install
