@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.logging.FileHandler;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
@@ -1380,6 +1381,7 @@ public class CommandLineInterface {
     public Logger getLogger() {
         Logger logger = Logger.getLogger("JediverseJsonLog");
         if (!debug) {
+            LogManager.getLogManager().reset();
             return logger;
         }
         FileHandler fh;
