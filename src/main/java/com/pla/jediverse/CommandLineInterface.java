@@ -233,6 +233,9 @@ public class CommandLineInterface {
             if ("blocks".equals(words[0])) {
                 blocks();
             }
+            if ("properties".equals(words[0])) {
+                Utils.printProperties();
+            }
             if ("gc".equals(words[0])) {
                 System.out.format("\nGarbage collection suggested\n\nBefore:\n");
                 Utils.printResourceUtilization();
@@ -1354,6 +1357,7 @@ public class CommandLineInterface {
         System.out.format("Website https://jediverse.com/\n");
         System.out.format("JSON logging file file://%s\n", jsonLoggerFile.getAbsolutePath());
         System.out.format("Settings file file://%s\n", getSettingsFileName());
+        System.out.format("Java runtime: %s %s\n", System.getProperty("java.runtime.name"), System.getProperty("java.runtime.version"));
         System.out.format("User ");
         printWhoAmI();
         if (!webSockets.isEmpty()) {

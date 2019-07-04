@@ -83,6 +83,10 @@ notifications or note
     Show notifications.
     https://youtu.be/VGEW3zmuy_A
 
+properties
+    Show Java properties
+    https://youtu.be/J2VcyqlbZWM
+
 rep or reply
     Reply to a message.
     https://youtu.be/1btj6iAa1t4
