@@ -57,6 +57,7 @@ public class CommandLineInterface {
     private JsonArray jsonArrayAccounts = new JsonArray();
     private File jsonLoggerFile;
     private ArrayList<String> streams = new ArrayList<>();
+    private static boolean debug = false;
 
     private void clearGlobalVariables() {
         jsonArrayAccounts = new JsonArray();
@@ -92,6 +93,9 @@ public class CommandLineInterface {
     }
 
     public static void main(String[] args) {
+        if (args.length == 1 && "debug".equalsIgnoreCase(args[0])) {
+            debug = true;
+        }
         new CommandLineInterface();
         System.exit(0);
     }
@@ -1355,7 +1359,9 @@ public class CommandLineInterface {
         System.out.format("Jediverse is a command line interface for the Fediverse. Jediverse was created by https://pla.social/pla. YMMV ☮\n");
         System.out.format("Source %s\n", "https://github.com/pla1/Jediverse");
         System.out.format("Website https://jediverse.com/\n");
-        System.out.format("JSON logging file file://%s\n", jsonLoggerFile.getAbsolutePath());
+        if (debug) {
+            System.out.format("JSON logging file file://%s\n", jsonLoggerFile.getAbsolutePath());
+        }
         System.out.format("Settings file file://%s\n", getSettingsFileName());
         System.out.format("Java runtime: %s %s\n", System.getProperty("java.runtime.name"), System.getProperty("java.runtime.version"));
         System.out.format("User ");
@@ -1373,6 +1379,9 @@ public class CommandLineInterface {
 
     public Logger getLogger() {
         Logger logger = Logger.getLogger("JediverseJsonLog");
+        if (!debug) {
+            return logger;
+        }
         FileHandler fh;
         try {
             jsonLoggerFile = File.createTempFile("jediverse_json_log_", ".log");
