@@ -1453,17 +1453,21 @@ public class CommandLineInterface {
             System.out.format("No files uploaded.\n");
         }
     }
+
     private void context(JsonElement jsonElement) {
         String urlString = String.format("https://%s/api/v1/statuses/%s/context", Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(jsonElement, "id"));
         JsonElement contextJsonElement = getJsonElement(urlString);
         JsonArray descendants = contextJsonElement.getAsJsonObject().getAsJsonArray("descendants");
         JsonArray ancestors = contextJsonElement.getAsJsonObject().getAsJsonArray("ancestors");
+        ancestors.addAll(descendants);
         for (JsonElement ancestor:ancestors) {
+            String createdAt = Utils.getProperty(ancestor, "created_at");
+            String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
             JsonElement account = ancestor.getAsJsonObject().get("account");
+            String displayName = getAccountDisplayName(account);
             String content = Utils.getProperty(ancestor, "content");
             String text = Jsoup.parse(content).text();
-            System.out.format("\n%s\n\n", text);
+            System.out.format("%s\n%s %s\n\n", green(displayName), dateDisplay, text);
         }
-        System.out.format("%s\n", contextJsonElement.toString());
     }
 }
