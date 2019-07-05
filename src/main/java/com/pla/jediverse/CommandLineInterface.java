@@ -187,7 +187,7 @@ public class CommandLineInterface {
         return quantity;
     }
 
-    private void mainRoutine()  {
+    private void mainRoutine() {
         String line;
         boolean done = false;
         while (!done) {
@@ -929,7 +929,7 @@ public class CommandLineInterface {
         for (JsonElement je : accounts) {
             JsonObject account = je.getAsJsonObject();
             String displayName = getAccountDisplayName(account);
-            String note =  Jsoup.parse(Utils.getProperty(account, "note")).text();
+            String note = Jsoup.parse(Utils.getProperty(account, "note")).text();
             System.out.format("%s %s %s\n", green(displayName), Utils.getProperty(account, "url"), note);
         }
     }
@@ -1337,7 +1337,7 @@ public class CommandLineInterface {
 
         @Override
         public CompletionStage<?> onPing(WebSocket webSocket, ByteBuffer message) {
-       //     System.out.format("onPing Message: %s\n", message);
+            //     System.out.format("onPing Message: %s\n", message);
             return Listener.super.onPing(webSocket, message);
         }
 
@@ -1393,7 +1393,7 @@ public class CommandLineInterface {
             System.out.format("\n");
         }
         Utils.printResourceUtilization();
-     //   Utils.printProperties();
+        //   Utils.printProperties();
     }
 
     public Logger getLogger() {
@@ -1457,17 +1457,30 @@ public class CommandLineInterface {
     private void context(JsonElement jsonElement) {
         String urlString = String.format("https://%s/api/v1/statuses/%s/context", Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(jsonElement, "id"));
         JsonElement contextJsonElement = getJsonElement(urlString);
+     //   System.out.format("%s\n", contextJsonElement.toString());
         JsonArray descendants = contextJsonElement.getAsJsonObject().getAsJsonArray("descendants");
         JsonArray ancestors = contextJsonElement.getAsJsonObject().getAsJsonArray("ancestors");
+        JsonArray jsonArray = new JsonArray();
+        for (JsonElement je:descendants) {
+            jsonArray.add(je);
+        }
+        for (int i = ancestors.size() -1 ; i >= 0;i--) {
+            jsonArray.add(ancestors.get(i));
+        }
+
+        printJsonElements(jsonArray, null);
+        if (true) {
+            return;
+        }
         ancestors.addAll(descendants);
-        for (JsonElement ancestor:ancestors) {
+        for (JsonElement ancestor : ancestors) {
             String createdAt = Utils.getProperty(ancestor, "created_at");
             String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
             JsonElement account = ancestor.getAsJsonObject().get("account");
             String displayName = getAccountDisplayName(account);
             String content = Utils.getProperty(ancestor, "content");
             String text = Jsoup.parse(content).text();
-            System.out.format("%s\n%s %s\n\n", green(displayName), dateDisplay, text);
+            System.out.format("%d %s %s %s\n", 0, green(displayName), dateDisplay, text);
         }
     }
 }
