@@ -252,7 +252,10 @@ public class CommandLineInterface {
                 clearMediaArrayList();
             }
             if ("following".equals(line)) {
-                following();
+                followingFollowers(line);
+            }
+            if ("followers".equals(line)) {
+                followingFollowers(line);
             }
             if ("lists".equals(line)) {
                 lists();
@@ -532,7 +535,7 @@ public class CommandLineInterface {
 
     private void listAddAccount(String id, String searchString) {
         if (jsonArrayFollowing.size() == 0) {
-            following();
+            followingFollowers("following");
         }
         JsonArray foundJsonArray = new JsonArray();
         for (JsonElement accountJsonElement : jsonArrayFollowing) {
@@ -555,12 +558,17 @@ public class CommandLineInterface {
         //      System.out.format("RESPONSE: %s\n", jsonElement.toString());
     }
 
-    private void following() {
+    private void followingFollowers(String action) {
         jsonArrayFollowing = new JsonArray();
         JsonElement jsonElementMe = whoami();
-        System.out.format("Gathering accounts %s is following.\n", Utils.getProperty(jsonElementMe, "acct"));
+        if ("following".equals(action)) {
+            System.out.format("Gathering accounts that %s follows.\n", Utils.getProperty(jsonElementMe, "acct"));
+        }
+        if ("followers".equals(action)) {
+            System.out.format("Gathering accounts that are following %s.\n", Utils.getProperty(jsonElementMe, "acct"));
+        }
         String id = Utils.getProperty(jsonElementMe, "id");
-        String urlString = String.format("https://%s/api/v1/accounts/%s/following?limit=40", Utils.getProperty(settingsJsonObject, "instance"), id);
+        String urlString = String.format("https://%s/api/v1/accounts/%s/%s?limit=40", Utils.getProperty(settingsJsonObject, "instance"), id, action);
         URL url = Utils.getUrl(urlString);
         while (url != null) {
             HttpsURLConnection urlConnection;
