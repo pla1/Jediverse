@@ -434,6 +434,16 @@ public class CommandLineInterface {
                     Utils.run(new String[]{"xdg-open", urlString});
                 }
             }
+            if (words.length == 2 && "context".equals(words[0])) {
+                int index = Utils.getInt(words[1]);
+                if (index > jsonArrayAll.size()) {
+                    System.out.format("Item %d not found.", index);
+                    continue;
+                }
+                JsonElement jsonElement = jsonArrayAll.get(index);
+                context(jsonElement);
+                // // TODO: 7/4/19
+            }
             if (words.length == 2 && "unfav".equals(words[0])) {
                 int index = Utils.getInt(words[1]);
                 if (index > jsonArrayAll.size()) {
@@ -1442,5 +1452,18 @@ public class CommandLineInterface {
         } else {
             System.out.format("No files uploaded.\n");
         }
+    }
+    private void context(JsonElement jsonElement) {
+        String urlString = String.format("https://%s/api/v1/statuses/%s/context", Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(jsonElement, "id"));
+        JsonElement contextJsonElement = getJsonElement(urlString);
+        JsonArray descendants = contextJsonElement.getAsJsonObject().getAsJsonArray("descendants");
+        JsonArray ancestors = contextJsonElement.getAsJsonObject().getAsJsonArray("ancestors");
+        for (JsonElement ancestor:ancestors) {
+            JsonElement account = ancestor.getAsJsonObject().get("account");
+            String content = Utils.getProperty(ancestor, "content");
+            String text = Jsoup.parse(content).text();
+            System.out.format("\n%s\n\n", text);
+        }
+        System.out.format("%s\n", contextJsonElement.toString());
     }
 }
