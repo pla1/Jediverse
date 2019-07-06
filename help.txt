@@ -22,6 +22,10 @@ blocks
     List blocked accounts.
     https://youtu.be/Lhd-MGhCTRQ
 
+browser-command
+    Set the browser command to use for the go function. The default is xdg-open. If your OS doesn't have that command set it to /usr/bin/firefox or some other browser.
+    https://youtu.be/K3MtDj1tFR4
+
 clear
     Clear the console
     https://youtu.be/RZEA3q1mK5w
