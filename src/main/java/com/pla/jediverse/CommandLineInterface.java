@@ -50,7 +50,9 @@ public class CommandLineInterface {
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final int DEFAULT_QUANTITY = 20;
     private final String DEFAULT_BROWSER_COMMAND = "/usr/bin/xdg-open";
-    private final String DEFAULT_AUDIO_FILE_NAME = "ding.wav";
+    private final String DEFAULT_AUDIO_FILE_NAME_NOTIFICATIONS = "ding.wav";
+    private final String DEFAULT_AUDIO_FILE_NAME_FAILS = "fail.wav";
+
     private JsonObject settingsJsonObject;
     private JsonArray jsonArrayAll = new JsonArray();
     private Logger logger;
@@ -126,16 +128,27 @@ public class CommandLineInterface {
         System.out.format("Closed %d WebSockets.\n", quantity);
     }
 
-    private void playAudio() {
-        String audioFileName = getAudioFileName();
+    private void playAudioNotification() {
+        String audioFileName = getAudioFileNameNotifications();
         if ("none".equalsIgnoreCase(audioFileName)) {
             return;
         }
+        playAudio(audioFileName);
+    }
+
+    private void playAudioFail() {
+        String audioFileName = getAudioFileNameFails();
+        if ("none".equalsIgnoreCase(audioFileName)) {
+            return;
+        }
+        playAudio(audioFileName);
+    }
+
+    private void playAudio(String audioFileName) {
         AudioInputStream audioInputStream;
         Clip clip;
         try {
             File file = new File(audioFileName).getAbsoluteFile();
-            //    System.out.format("Audio file: %s\n", file.getAbsolutePath());
             audioInputStream = AudioSystem.getAudioInputStream(file);
             clip = AudioSystem.getClip();
             clip.open(audioInputStream);
@@ -168,20 +181,28 @@ public class CommandLineInterface {
                 settingsJsonObject = chooseInstance(settingsJsonArray);
             }
         }
-        System.out.format("Using instance: %s\n", settingsJsonObject.get("instance"));
+        System.out.format("Using instance: %s\n", settingsJsonObject.get(PropertyNames.instance.name()));
     }
 
-    private String getAudioFileName() {
-        String audioFileName = Utils.getProperty(settingsJsonObject, "audioFileName");
+    private String getAudioFileNameNotifications() {
+        String audioFileName = Utils.getProperty(settingsJsonObject, PropertyNames.audioFileNotifications.name());
         if (Utils.isBlank(audioFileName)) {
-            return "ding.wav";
+            return DEFAULT_AUDIO_FILE_NAME_NOTIFICATIONS;
+        } else {
+            return audioFileName;
+        }
+    }
+    private String getAudioFileNameFails() {
+        String audioFileName = Utils.getProperty(settingsJsonObject, PropertyNames.audioFileFails.name());
+        if (Utils.isBlank(audioFileName)) {
+            return DEFAULT_AUDIO_FILE_NAME_FAILS;
         } else {
             return audioFileName;
         }
     }
 
     private int getQuantity() {
-        int quantity = Utils.getInt(Utils.getProperty(settingsJsonObject, "quantity"));
+        int quantity = Utils.getInt(Utils.getProperty(settingsJsonObject, PropertyNames.quantity.name()));
         if (quantity == 0) {
             quantity = DEFAULT_QUANTITY;
         }
@@ -278,7 +299,7 @@ public class CommandLineInterface {
                 if (jsonElement == null) {
                     System.out.format("List %s not created.\n", title);
                 }
-                System.out.format("List id: %s title: %s created.\n", Utils.getProperty(jsonElement, "id"), Utils.getProperty(jsonElement, "title"));
+                System.out.format("List id: %s title: %s created.\n", Utils.getProperty(jsonElement, PropertyNames.id.name()), Utils.getProperty(jsonElement, "title"));
             }
             if ("list-delete".equals(words[0]) && words.length == 2 && Utils.isNumeric(words[1])) {
                 String id = words[1];
@@ -296,22 +317,25 @@ public class CommandLineInterface {
             if ("fed".equals(line)) {
                 timeline("public", "&local=false");
             }
-            if ("quantity".equals(words[0]) && words.length == 2 && Utils.isNumeric(words[1])) {
+            if (PropertyNames.quantity.name().equals(words[0]) && words.length == 2 && Utils.isNumeric(words[1])) {
                 int qty = Utils.getInt(words[1]);
                 updateQuantitySettings(qty);
             }
             if ("browser-command".equals(words[0]) && words.length == 2) {
                 updateBrowserCommandSettings(words[1]);
             }
-            if ("audio".equals(words[0]) && words.length == 2) {
-                updateAudioFileNameSettings(words[1]);
+            if ("audio-notifications".equals(words[0]) && words.length == 2) {
+                updateAudioFileNameSetting(words[1], PropertyNames.audioFileNotifications);
+            }
+            if ("audio-fails".equals(words[0]) && words.length == 2) {
+                updateAudioFileNameSetting(words[1], PropertyNames.audioFileFails);
             }
             if ("aa".equals(line)) {
                 createApp();
             }
             if ("sa".equals(line)) {
                 settingsJsonObject = chooseInstance(getSettingsJsonArray());
-                System.out.format("Using instance: %s\n", settingsJsonObject.get("instance"));
+                System.out.format("Using instance: %s\n", settingsJsonObject.get(PropertyNames.instance.name()));
             }
             if ("da".equals(line)) {
                 deleteInstance(getSettingsJsonArray());
@@ -349,7 +373,7 @@ public class CommandLineInterface {
                 if (Utils.isNotBlank(stream)) {
                     HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
                     String urlString = String.format("wss://%s/api/v1/streaming/?stream=%s&access_token=%s",
-                            Utils.getProperty(settingsJsonObject, "instance"), stream, Utils.getProperty(settingsJsonObject, "access_token"));
+                            Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()), stream, Utils.getProperty(settingsJsonObject, "access_token"));
                     WebSocketListener webSocketListener = new WebSocketListener(stream);
                     WebSocket webSocket = client.newWebSocketBuilder().connectTimeout(Duration.ofSeconds(5)).buildAsync(URI.create(urlString), webSocketListener).join();
                     webSockets.add(webSocket);
@@ -396,10 +420,10 @@ public class CommandLineInterface {
                             if ("mention".equals(type)) {
                                 JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
                                 String visibility = Utils.getProperty(statusJe, "visibility");
-                                postStatus(text, Utils.getProperty(statusJe, "id"), visibility);
+                                postStatus(text, Utils.getProperty(statusJe, PropertyNames.id.name()), visibility);
                             } else {
                                 String visibility = Utils.getProperty(jsonElement, "visibility");
-                                postStatus(text, Utils.getProperty(jsonElement, "id"), visibility);
+                                postStatus(text, Utils.getProperty(jsonElement, PropertyNames.id.name()), visibility);
                             }
                         }
                     }
@@ -413,11 +437,11 @@ public class CommandLineInterface {
                     continue;
                 }
                 JsonElement jsonElement = jsonArrayAll.get(index);
-                String id = Utils.getProperty(jsonElement, "id");
+                String id = Utils.getProperty(jsonElement, PropertyNames.id.name());
                 //     System.out.format("Fav this: %s\n", jsonElement.toString());
                 if ("mention".equals(Utils.getProperty(jsonElement, "type"))) {
                     JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
-                    id = Utils.getProperty(statusJe, "id");
+                    id = Utils.getProperty(statusJe, PropertyNames.id.name());
                 }
                 favourite(id);
             }
@@ -468,7 +492,7 @@ public class CommandLineInterface {
                     continue;
                 }
                 JsonElement jsonElement = jsonArrayAll.get(index);
-                unfavourite(Utils.getProperty(jsonElement, "id"));
+                unfavourite(Utils.getProperty(jsonElement, PropertyNames.id.name()));
             }
             if ("quit".equals(line) || "exit".equals(line)) {
                 done = true;
@@ -499,18 +523,18 @@ public class CommandLineInterface {
             return;
         }
         JsonArray arrayOfIds = new JsonArray();
-        arrayOfIds.add(Utils.getProperty(accountJsonElement, "id"));
+        arrayOfIds.add(Utils.getProperty(accountJsonElement, PropertyNames.id.name()));
         JsonObject params = new JsonObject();
         params.add("account_ids", arrayOfIds);
-        String urlString = String.format("https://%s/api/v1/lists/%s/accounts", Utils.getProperty(settingsJsonObject, "instance"), listId);
+        String urlString = String.format("https://%s/api/v1/lists/%s/accounts", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()), listId);
         int statusCode = deleteAsJson(Utils.getUrl(urlString), params.toString());
         System.out.format("Status code %d from removing account ID %s index %s from list id %s.\n",
-                statusCode, Utils.getProperty(accountJsonElement, "id"), accountIndex, listId);
+                statusCode, Utils.getProperty(accountJsonElement, PropertyNames.id.name()), accountIndex, listId);
         listAccounts(listId);
     }
 
     private void listDelete(String id) {
-        String urlString = String.format("https://%s/api/v1/lists/%s", Utils.getProperty(settingsJsonObject, "instance"), id);
+        String urlString = String.format("https://%s/api/v1/lists/%s", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()), id);
         int statusCode = deleteAsJson(Utils.getUrl(urlString), null);
         System.out.format("Delete list id: %s returned status code: %d.\n", id, statusCode);
     }
@@ -531,12 +555,12 @@ public class CommandLineInterface {
         }
         JsonElement accountJsonElement = jsonArrayAccounts.get(index);
         System.out.format("%s %s %s\n",
-                Utils.getProperty(accountJsonElement, "id"), Utils.getProperty(accountJsonElement, "acct"), Utils.getProperty(accountJsonElement, "username"));
+                Utils.getProperty(accountJsonElement, PropertyNames.id.name()), Utils.getProperty(accountJsonElement, "acct"), Utils.getProperty(accountJsonElement, "username"));
         String verb = "unfollow";
         if (follow) {
             verb = "follow";
         }
-        String urlString = String.format("https://%s/api/v1/accounts/%s/%s", Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(accountJsonElement, "id"), verb);
+        String urlString = String.format("https://%s/api/v1/accounts/%s/%s", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()), Utils.getProperty(accountJsonElement, PropertyNames.id.name()), verb);
         JsonObject jsonObjectResult = postAsJson(Utils.getUrl(urlString), null);
         boolean following = Utils.isYes(Utils.getProperty(jsonObjectResult, "following"));
         boolean followedBy = Utils.isYes(Utils.getProperty(jsonObjectResult, "followed_by"));
@@ -576,9 +600,9 @@ public class CommandLineInterface {
         JsonArray arrayOfIds = new JsonArray();
         for (JsonElement accountJsonElement : foundJsonArray) {
             System.out.format("%s %s\n", Utils.getProperty(accountJsonElement, "acct"), Utils.getProperty(accountJsonElement, "username"));
-            arrayOfIds.add(Utils.getProperty(accountJsonElement, "id"));
+            arrayOfIds.add(Utils.getProperty(accountJsonElement, PropertyNames.id.name()));
         }
-        String urlString = String.format("https://%s/api/v1/lists/%s/accounts", Utils.getProperty(settingsJsonObject, "instance"), id);
+        String urlString = String.format("https://%s/api/v1/lists/%s/accounts", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()), id);
         JsonObject params = new JsonObject();
         params.add("account_ids", arrayOfIds);
         JsonElement jsonElement = postAsJson(Utils.getUrl(urlString), params.toString());
@@ -594,8 +618,8 @@ public class CommandLineInterface {
         if ("followers".equals(action)) {
             System.out.format("Gathering accounts that are following %s.\n", Utils.getProperty(jsonElementMe, "acct"));
         }
-        String id = Utils.getProperty(jsonElementMe, "id");
-        String urlString = String.format("https://%s/api/v1/accounts/%s/%s?limit=40", Utils.getProperty(settingsJsonObject, "instance"), id, action);
+        String id = Utils.getProperty(jsonElementMe, PropertyNames.id.name());
+        String urlString = String.format("https://%s/api/v1/accounts/%s/%s?limit=40", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()), id, action);
         URL url = Utils.getUrl(urlString);
         while (url != null) {
             HttpsURLConnection urlConnection;
@@ -631,7 +655,7 @@ public class CommandLineInterface {
 
         ArrayList<Account> arrayListFollowing = new ArrayList<>();
         for (JsonElement jsonElement : jsonArrayFollowing) {
-            arrayListFollowing.add(new Account(Utils.getProperty(jsonElement, "id"), Utils.getProperty(jsonElement, "acct"), Utils.getProperty(jsonElement, "display_name"), Utils.getProperty(jsonElement, "url")));
+            arrayListFollowing.add(new Account(Utils.getProperty(jsonElement, PropertyNames.id.name()), Utils.getProperty(jsonElement, "acct"), Utils.getProperty(jsonElement, "display_name"), Utils.getProperty(jsonElement, "url")));
         }
         Collections.sort(arrayListFollowing);
         for (Account account : arrayListFollowing) {
@@ -641,7 +665,7 @@ public class CommandLineInterface {
     }
 
     private JsonElement listCreate(String title) {
-        String urlString = String.format("https://%s/api/v1/lists", Utils.getProperty(settingsJsonObject, "instance"));
+        String urlString = String.format("https://%s/api/v1/lists", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()));
         JsonObject params = new JsonObject();
         params.addProperty("title", title);
         return postAsJson(Utils.getUrl(urlString), params.toString());
@@ -649,17 +673,17 @@ public class CommandLineInterface {
 
     private void updateQuantitySettings(int quantity) {
         if (quantity > 1) {
-            settingsJsonObject.addProperty("quantity", quantity);
+            settingsJsonObject.addProperty(PropertyNames.quantity.name(), quantity);
             JsonArray settingsJsonArray = getSettingsJsonArray();
             for (JsonElement jsonElement : settingsJsonArray) {
-                if (Utils.getProperty(jsonElement, "id").equals(Utils.getProperty(settingsJsonObject, "id"))) {
-                    jsonElement.getAsJsonObject().addProperty("quantity", quantity);
+                if (Utils.getProperty(jsonElement, PropertyNames.id.name()).equals(Utils.getProperty(settingsJsonObject, PropertyNames.id.name()))) {
+                    jsonElement.getAsJsonObject().addProperty(PropertyNames.quantity.name(), quantity);
                 }
             }
             String pretty = gson.toJson(settingsJsonArray);
             Utils.write(getSettingsFileName(), pretty);
             System.out.format("Quantity now set to %d and settings saved for instance: %s\n",
-                    quantity, Utils.getProperty(settingsJsonObject, "instance"));
+                    quantity, Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()));
         } else {
             System.out.format("Quantity must be greater than zero. %d is not.", quantity);
         }
@@ -669,34 +693,34 @@ public class CommandLineInterface {
         settingsJsonObject.addProperty("browser_command", browserCommand);
         JsonArray settingsJsonArray = getSettingsJsonArray();
         for (JsonElement jsonElement : settingsJsonArray) {
-            if (Utils.getProperty(jsonElement, "id").equals(Utils.getProperty(settingsJsonObject, "id"))) {
+            if (Utils.getProperty(jsonElement, PropertyNames.id.name()).equals(Utils.getProperty(settingsJsonObject, PropertyNames.id.name()))) {
                 jsonElement.getAsJsonObject().addProperty("browser_command", browserCommand);
             }
         }
         String pretty = gson.toJson(settingsJsonArray);
         Utils.write(getSettingsFileName(), pretty);
         System.out.format("Browser command now set to %s and settings saved for instance: %s\n",
-                browserCommand, Utils.getProperty(settingsJsonObject, "instance"));
+                browserCommand, Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()));
     }
 
-    private void updateAudioFileNameSettings(String audioFileName) {
+    private void updateAudioFileNameSetting(String audioFileName, PropertyNames propertyName) {
         File file = new File(audioFileName);
         if (!"none".equalsIgnoreCase(audioFileName) && !file.exists()) {
             System.out.format("Audio file %s not found.\n", audioFileName);
             return;
         }
-        settingsJsonObject.addProperty("audioFileName", audioFileName);
+        settingsJsonObject.addProperty(propertyName.name(), audioFileName);
         JsonArray settingsJsonArray = getSettingsJsonArray();
         for (JsonElement jsonElement : settingsJsonArray) {
-            if (Utils.getProperty(jsonElement, "id").equals(Utils.getProperty(settingsJsonObject, "id"))) {
-                jsonElement.getAsJsonObject().addProperty("audioFileName", audioFileName);
+            if (Utils.getProperty(jsonElement, PropertyNames.id.name()).equals(Utils.getProperty(settingsJsonObject, PropertyNames.id.name()))) {
+                jsonElement.getAsJsonObject().addProperty(propertyName.name(), audioFileName);
             }
         }
         String pretty = gson.toJson(settingsJsonArray);
         Utils.write(getSettingsFileName(), pretty);
         System.out.format("Audio file name now set to %s and settings saved for instance: %s\n",
-                audioFileName, Utils.getProperty(settingsJsonObject, "instance"));
-        playAudio();
+                audioFileName, Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()));
+        playAudioNotification();
     }
 
     private JsonObject chooseInstance(JsonArray settingsJsonArray) {
@@ -711,7 +735,7 @@ public class CommandLineInterface {
                 JsonObject jsonObject = jsonElement.getAsJsonObject();
                 String millisecondsString = Utils.getProperty(jsonObject, "milliseconds");
                 long milliseconds = Utils.getLong(millisecondsString);
-                System.out.format("%d Instance: %s added: %s\n", i++, jsonObject.get("instance"), new Date(milliseconds));
+                System.out.format("%d Instance: %s added: %s\n", i++, jsonObject.get(PropertyNames.instance.name()), new Date(milliseconds));
             }
             String answer = ask("");
             if (answer == null) {
@@ -738,7 +762,7 @@ public class CommandLineInterface {
         int i = 0;
         for (JsonElement jsonElement : settingsJsonArray) {
             JsonObject jsonObject = jsonElement.getAsJsonObject();
-            System.out.format("%d Instance: %s added: %s\n", i++, jsonObject.get("instance"), new Date(Utils.getLong(Utils.getProperty(jsonObject, "milliseconds"))));
+            System.out.format("%d Instance: %s added: %s\n", i++, jsonObject.get(PropertyNames.instance.name()), new Date(Utils.getLong(Utils.getProperty(jsonObject, "milliseconds"))));
         }
         String answer = ask("");
         if (Utils.isNotBlank(answer)) {
@@ -756,7 +780,7 @@ public class CommandLineInterface {
     }
 
     private void lists() {
-        String urlString = String.format("https://%s/api/v1/lists", Utils.getProperty(settingsJsonObject, "instance"));
+        String urlString = String.format("https://%s/api/v1/lists", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()));
         JsonArray jsonArray = getJsonArray(urlString);
         if (jsonArray == null) {
             System.out.format("Failed to retrieve lists.\n");
@@ -764,13 +788,13 @@ public class CommandLineInterface {
         }
         for (JsonElement jsonElement : jsonArray) {
             logger.info(gson.toJson(jsonElement));
-            System.out.format("%s %s\n", cyan(Utils.getProperty(jsonElement, "id")), Utils.getProperty(jsonElement, "title"));
+            System.out.format("%s %s\n", cyan(Utils.getProperty(jsonElement, PropertyNames.id.name())), Utils.getProperty(jsonElement, "title"));
         }
         System.out.format("%d lists.\n", jsonArray.size());
     }
 
     private JsonArray listAccounts(String listId) {
-        String urlString = String.format("https://%s/api/v1/lists/%s/accounts", Utils.getProperty(settingsJsonObject, "instance"), listId);
+        String urlString = String.format("https://%s/api/v1/lists/%s/accounts", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()), listId);
         JsonArray jsonArray = getJsonArray(urlString);
         if (jsonArray == null) {
             System.out.format("List id %s not found.\n", listId);
@@ -787,14 +811,14 @@ public class CommandLineInterface {
 
     // // TODO: 5/26/19 Reply from noteifications is picking up the wrong ID.
     private void postStatus(String text, String inReplyToId, String visibility) {
-        String urlString = String.format("https://%s/api/v1/statuses", Utils.getProperty(settingsJsonObject, "instance"));
+        String urlString = String.format("https://%s/api/v1/statuses", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()));
         JsonObject params = new JsonObject();
         params.addProperty("status", text);
         params.addProperty("visibility", visibility);
         if (!mediaArrayList.isEmpty()) {
             JsonArray jsonArray = new JsonArray();
             for (JsonElement jsonElement : mediaArrayList) {
-                jsonArray.add(Utils.getProperty(jsonElement, "id"));
+                jsonArray.add(Utils.getProperty(jsonElement, PropertyNames.id.name()));
             }
             params.add("media_ids", jsonArray);
         }
@@ -806,6 +830,10 @@ public class CommandLineInterface {
         mediaArrayList.clear();
     }
 
+    private enum PropertyNames {
+        audioFileNotifications, audioFileFails, id, instance, me, milliseconds, quantity, browserCommand, client_name, scopes, website, grant_type, access_token, refresh_token, redirect_uris, client_id, client_secret, code, expires_in, created_at
+    }
+
     private void createApp() {
         String prompt = "Type your instance name and press ENTER. For example: pleroma.site";
         String instance = ask(prompt);
@@ -814,11 +842,11 @@ public class CommandLineInterface {
             instance = ask(prompt);
         }
         JsonObject params = new JsonObject();
-        params.addProperty("client_name", "Jediverse CLI");
-        params.addProperty("redirect_uris", "urn:ietf:wg:oauth:2.0:oob");
-        params.addProperty("scopes", "read write follow push");
-        params.addProperty("website", "https://jediverse.com");
-        params.addProperty("browser_command", DEFAULT_BROWSER_COMMAND);
+        params.addProperty(PropertyNames.client_name.name(), "Jediverse CLI");
+        params.addProperty(PropertyNames.redirect_uris.name(), "urn:ietf:wg:oauth:2.0:oob");
+        params.addProperty(PropertyNames.scopes.name(), "read write follow push");
+        params.addProperty(PropertyNames.website.name(), "https://jediverse.com");
+        params.addProperty(PropertyNames.browserCommand.name(), DEFAULT_BROWSER_COMMAND);
         String urlString = String.format("https://%s/api/v1/apps", instance);
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
         if (!Utils.isJsonObject(jsonObject)) {
@@ -835,21 +863,22 @@ public class CommandLineInterface {
         }
         urlString = String.format("https://%s/oauth/token", instance);
         params = new JsonObject();
-        params.addProperty("client_id", jsonObject.get("client_id").getAsString());
-        params.addProperty("client_secret", jsonObject.get("client_secret").getAsString());
-        params.addProperty("grant_type", "authorization_code");
-        params.addProperty("code", token);
-        params.addProperty("redirect_uri", jsonObject.get("redirect_uri").getAsString());
+        params.addProperty(PropertyNames.client_id.name(), jsonObject.get(PropertyNames.client_id.name()).getAsString());
+        params.addProperty(PropertyNames.client_secret.name(), jsonObject.get(PropertyNames.client_secret.name()).getAsString());
+        params.addProperty(PropertyNames.grant_type.name(), "authorization_code");
+        params.addProperty(PropertyNames.code.name(), token);
+        params.addProperty(PropertyNames.redirect_uris.name(), jsonObject.get(PropertyNames.redirect_uris.name()).getAsString());
         JsonObject outputJsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
-        jsonObject.addProperty("access_token", outputJsonObject.get("access_token").getAsString());
-        jsonObject.addProperty("refresh_token", Utils.getProperty(outputJsonObject, "refresh_token"));
-        jsonObject.addProperty("me", Utils.getProperty(outputJsonObject, "me"));
-        jsonObject.addProperty("expires_in", Utils.getProperty(outputJsonObject, "expires_in"));
-        jsonObject.addProperty("created_at", Utils.getProperty(outputJsonObject, "created_at"));
-        jsonObject.addProperty("instance", instance);
-        jsonObject.addProperty("milliseconds", System.currentTimeMillis());
-        jsonObject.addProperty("quantity", DEFAULT_QUANTITY);
-        jsonObject.addProperty("audioFileName", DEFAULT_AUDIO_FILE_NAME);
+        jsonObject.addProperty(PropertyNames.access_token.name(), outputJsonObject.get(PropertyNames.access_token.name()).getAsString());
+        jsonObject.addProperty(PropertyNames.refresh_token.name(), Utils.getProperty(outputJsonObject, PropertyNames.refresh_token.name()));
+        jsonObject.addProperty(PropertyNames.me.name(), Utils.getProperty(outputJsonObject, PropertyNames.me.name()));
+        jsonObject.addProperty(PropertyNames.expires_in.name(), Utils.getProperty(outputJsonObject, PropertyNames.expires_in.name()));
+        jsonObject.addProperty(PropertyNames.created_at.name(), Utils.getProperty(outputJsonObject, PropertyNames.created_at.name()));
+        jsonObject.addProperty(PropertyNames.instance.name(), instance);
+        jsonObject.addProperty(PropertyNames.milliseconds.name(), System.currentTimeMillis());
+        jsonObject.addProperty(PropertyNames.quantity.name(), DEFAULT_QUANTITY);
+        jsonObject.addProperty(PropertyNames.audioFileNotifications.name(), DEFAULT_AUDIO_FILE_NAME_NOTIFICATIONS);
+        jsonObject.addProperty(PropertyNames.audioFileFails.name(), DEFAULT_AUDIO_FILE_NAME_FAILS);
         JsonArray jsonArray = new JsonArray();
         if (new File(getSettingsFileName()).exists()) {
             JsonParser parser = new JsonParser();
@@ -915,7 +944,7 @@ public class CommandLineInterface {
     private void accountSearch(String line) {
         String searchString = line.substring(15);
         String encodedQuery = Utils.urlEncodeComponent(searchString);
-        String urlString = String.format("https://%s/api/v1/accounts/search?q=%s", Utils.getProperty(settingsJsonObject, "instance"), encodedQuery);
+        String urlString = String.format("https://%s/api/v1/accounts/search?q=%s", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()), encodedQuery);
         System.out.format("Searching for account \"%s\". This may take some time.\n", line);
         jsonArrayAccounts = getJsonArray(urlString);
         if (jsonArrayAccounts == null) {
@@ -971,7 +1000,7 @@ public class CommandLineInterface {
         System.out.format("Searching for \"%s\"...\n", searchString);
         String encodedQuery = Utils.urlEncodeComponent(searchString);
         String urlString = String.format("https://%s/api/v2/search?q=%s&limit=%d",
-                Utils.getProperty(settingsJsonObject, "instance"), encodedQuery, getQuantity());
+                Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()), encodedQuery, getQuantity());
         JsonElement jsonElement = getJsonElement(urlString);
         if (jsonElement != null) {
             JsonArray statuses = jsonElement.getAsJsonObject().getAsJsonArray("statuses");
@@ -992,11 +1021,11 @@ public class CommandLineInterface {
         String sinceIdFragment = "";
         if (jsonArrayAll.size() > 0) {
             JsonElement last = jsonArrayAll.get(jsonArrayAll.size() - 1);
-            sinceId = Utils.getProperty(last, "id");
+            sinceId = Utils.getProperty(last, PropertyNames.id.name());
             sinceIdFragment = String.format("&since_id=%s", sinceId);
         }
         String urlString = String.format("https://%s/api/v1/timelines/%s?limit=%d%s%s",
-                settingsJsonObject.get("instance").getAsString(), timeline, getQuantity(), extra, sinceIdFragment);
+                settingsJsonObject.get(PropertyNames.instance.name()).getAsString(), timeline, getQuantity(), extra, sinceIdFragment);
         JsonArray jsonArray = getJsonArray(urlString);
         if (jsonArray == null) {
             System.out.format("Failed to get timeline %s.\n", timeline);
@@ -1112,7 +1141,7 @@ public class CommandLineInterface {
     }
 
     private void notifications(String extra) {
-        String urlString = String.format("https://%s/api/v1/notifications?limit=%d%s", settingsJsonObject.get("instance").getAsString(), getQuantity(), extra);
+        String urlString = String.format("https://%s/api/v1/notifications?limit=%d%s", settingsJsonObject.get(PropertyNames.instance.name()).getAsString(), getQuantity(), extra);
         JsonArray jsonArray = getJsonArray(urlString);
         if (jsonArray == null) {
             System.out.format("Listing notifications failed.\n");
@@ -1187,13 +1216,13 @@ public class CommandLineInterface {
     }
 
     private void favourite(String id) {
-        String urlString = String.format("https://%s/api/v1/statuses/%s/favourite", settingsJsonObject.get("instance").getAsString(), id);
+        String urlString = String.format("https://%s/api/v1/statuses/%s/favourite", settingsJsonObject.get(PropertyNames.instance.name()).getAsString(), id);
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), null);
         System.out.format("Favourited: %s\n", Utils.getProperty(jsonObject, "url"));
     }
 
     private void unfavourite(String id) {
-        String urlString = String.format("https://%s/api/v1/statuses/%s/unfavourite", settingsJsonObject.get("instance").getAsString(), id);
+        String urlString = String.format("https://%s/api/v1/statuses/%s/unfavourite", settingsJsonObject.get(PropertyNames.instance.name()).getAsString(), id);
         System.out.println(urlString);
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), null);
         System.out.format("Unfavorited: %s\n", Utils.getProperty(jsonObject, "url"));
@@ -1280,12 +1309,12 @@ public class CommandLineInterface {
     }
 
     private JsonElement whoami() {
-        String urlString = String.format("https://%s/api/v1/accounts/verify_credentials", Utils.getProperty(settingsJsonObject, "instance"));
+        String urlString = String.format("https://%s/api/v1/accounts/verify_credentials", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()));
         return getJsonElement(urlString);
     }
 
     private void upload(String line) throws Exception {
-        String urlString = String.format("https://%s/api/v1/media", Utils.getProperty(settingsJsonObject, "instance"));
+        String urlString = String.format("https://%s/api/v1/media", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()));
         System.out.println(urlString);
         String fileName = line.substring(7);
         File file = new File(fileName);
@@ -1315,7 +1344,7 @@ public class CommandLineInterface {
         JsonElement jsonElement = jsonParser.parse(response.body());
         mediaArrayList.add(jsonElement);
         System.out.format("File %s uploaded as ID %s. You have %d file(s) that will be attached to your next postStatus.\n",
-                fileName, Utils.getProperty(jsonElement, "id"), mediaArrayList.size());
+                fileName, Utils.getProperty(jsonElement, PropertyNames.id.name()), mediaArrayList.size());
     }
 
     private void clearMediaArrayList() {
@@ -1373,7 +1402,7 @@ public class CommandLineInterface {
     }
 
     private void blocks() {
-        String urlString = String.format("https://%s/api/v1/blocks", Utils.getProperty(settingsJsonObject, "instance"));
+        String urlString = String.format("https://%s/api/v1/blocks", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()));
         JsonArray jsonArray = getJsonArray(urlString);
         if (jsonArray == null) {
             System.out.format("List blocked accounts failed.\n");
@@ -1409,7 +1438,7 @@ public class CommandLineInterface {
     }
 
     private void context(JsonElement jsonElement) {
-        String urlString = String.format("https://%s/api/v1/statuses/%s/context", Utils.getProperty(settingsJsonObject, "instance"), Utils.getProperty(jsonElement, "id"));
+        String urlString = String.format("https://%s/api/v1/statuses/%s/context", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()), Utils.getProperty(jsonElement, PropertyNames.id.name()));
         JsonElement contextJsonElement = getJsonElement(urlString);
         //    System.out.format("%s\n", contextJsonElement.toString());
         JsonArray descendants = contextJsonElement.getAsJsonObject().getAsJsonArray("descendants");
@@ -1445,7 +1474,7 @@ public class CommandLineInterface {
                     String event = Utils.getProperty(messageJsonElement, "event");
                     String payloadString = messageJsonElement.getAsJsonObject().get("payload").getAsString();
                     if ("notification".equals(event)) {
-                        playAudio();
+                        playAudioNotification();
                         System.out.format("%s", Utils.SYMBOL_SPEAKER);
                     }
                     if (Utils.isNotBlank(payloadString)) {
@@ -1488,6 +1517,7 @@ public class CommandLineInterface {
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             System.out.format("WebSocket closed. Status code: %d Reason: %s Stream: %s\n.", statusCode, reason, stream);
             webSocket.abort();
+            playAudioFail();
             return Listener.super.onClose(webSocket, statusCode, reason);
         }
 
@@ -1495,6 +1525,7 @@ public class CommandLineInterface {
         public void onError(WebSocket webSocket, Throwable error) {
             System.out.format("WebSocket error: %s.\n", error.getLocalizedMessage());
             error.printStackTrace();
+            playAudioFail();
             Listener.super.onError(webSocket, error);
         }
 
