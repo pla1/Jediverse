@@ -70,7 +70,8 @@ public class CommandLineInterface {
         none, search, clear, about, blocks, context, debug, ok, url, go, notification, event, payload, acct, display_name,
         properties, local, notifications, timeline, note, tl, following, followers, lists, gc, stop, home, post, unlisted,
         follow, reblog, favourite, mention, direct, fav, reply, rep, help, quit, exit, whoami, unfav, account_ids, username,
-        visibility, upload, unfollow, title, media_ids, file, description, authorization_code, followed_by
+        visibility, upload, unfollow, title, media_ids, file, description, authorization_code, followed_by, history, day, uses, name,
+        ancestors, descendants, account, accounts, hashtags, statuses, media_attachments
     }
 
     private CommandLineInterface() {
@@ -979,13 +980,13 @@ public class CommandLineInterface {
         System.out.format("\n\nHashtags\n");
         for (JsonElement je : hashtags) {
             JsonObject hashtag = je.getAsJsonObject();
-            JsonArray history = hashtag.getAsJsonArray("history");
+            JsonArray history = hashtag.getAsJsonArray(Literals.history.name());
             for (JsonElement historyElement : history) {
-                long day = Utils.getLong(Utils.getProperty(historyElement, "day"));
+                long day = Utils.getLong(Utils.getProperty(historyElement, Literals.day.name()));
                 Date date = new Date(day * 1000);
-                System.out.format("%s %s\t", Utils.getProperty(historyElement, "uses"), Utils.getFullDate(date));
+                System.out.format("%s %s\t", Utils.getProperty(historyElement, Literals.uses.name()), Utils.getFullDate(date));
             }
-            System.out.format("%s\t%s\n", Utils.getProperty(hashtag, "name"), Utils.getProperty(hashtag, Literals.url.name()));
+            System.out.format("%s\t%s\n", Utils.getProperty(hashtag, Literals.name.name()), Utils.getProperty(hashtag, Literals.url.name()));
         }
     }
 
@@ -1010,9 +1011,9 @@ public class CommandLineInterface {
                 Utils.getProperty(settingsJsonObject, Literals.instance.name()), encodedQuery, getQuantity());
         JsonElement jsonElement = getJsonElement(urlString);
         if (jsonElement != null) {
-            JsonArray statuses = jsonElement.getAsJsonObject().getAsJsonArray("statuses");
-            JsonArray hashtags = jsonElement.getAsJsonObject().getAsJsonArray("hashtags");
-            JsonArray accounts = jsonElement.getAsJsonObject().getAsJsonArray("accounts");
+            JsonArray statuses = jsonElement.getAsJsonObject().getAsJsonArray(Literals.statuses.name());
+            JsonArray hashtags = jsonElement.getAsJsonObject().getAsJsonArray(Literals.hashtags.name());
+            JsonArray accounts = jsonElement.getAsJsonObject().getAsJsonArray(Literals.accounts.name());
             System.out.format("%d statuses %d hasttags and %d accounts when searching for \"%s\".\n", statuses.size(), hashtags.size(), accounts.size(), searchString);
             printHashtags(hashtags);
             printAccounts(accounts);
@@ -1060,7 +1061,7 @@ public class CommandLineInterface {
         String reblogLabel = "";
         if (Utils.isJsonObject(reblogJe)) {
             symbol = Utils.SYMBOL_REPEAT;
-            JsonElement reblogAccountJe = reblogJe.getAsJsonObject().get("account");
+            JsonElement reblogAccountJe = reblogJe.getAsJsonObject().get(Literals.account.name());
             String reblogAccount = Utils.getProperty(reblogAccountJe, Literals.acct.name());
             String displayName = Utils.getProperty(reblogAccountJe, Literals.display_name.name());
             if (Utils.isNotBlank(displayName)) {
@@ -1070,7 +1071,7 @@ public class CommandLineInterface {
             }
             reblogLabel = yellow(displayName);
         }
-        JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
+        JsonElement accountJe = jsonElement.getAsJsonObject().get(Literals.account.name());
         if (!Utils.isJsonObject(accountJe)) {
             return;
         }
@@ -1110,7 +1111,7 @@ public class CommandLineInterface {
         String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
         //    System.out.format("DEBUG: Reblog label \"%s\" event: \"%s\" Type \"%s\"\n", reblogLabel, event, type);
         System.out.format("%s %s%s %s %s %s", cyan(jsonArrayAll.size() - 1), symbol, reblogLabel, dateDisplay, green(displayName), text);
-        JsonArray attachments = jsonElement.getAsJsonObject().getAsJsonArray("media_attachments");
+        JsonArray attachments = jsonElement.getAsJsonObject().getAsJsonArray(Literals.media_attachments.name());
         if (attachments != null) {
             for (JsonElement a : attachments) {
                 System.out.format(" %s", Utils.SYMBOL_PICTURE_FRAME);
@@ -1182,7 +1183,7 @@ public class CommandLineInterface {
                 JsonElement statusJe = jsonElement.getAsJsonObject().get(Literals.status.name());
                 text = Jsoup.parse(Utils.getProperty(statusJe, Literals.content.name())).text();
             }
-            JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
+            JsonElement accountJe = jsonElement.getAsJsonObject().get(Literals.account.name());
             String acct = Utils.getProperty(accountJe, Literals.acct.name());
             //   System.out.format("\n\n%s %s %s\n%s\n", symbol, acct, text, jsonElement);
             System.out.format("%s %s %s %s %s\n", cyan(jsonArrayAll.size() - 1), symbol, dateDisplay, green(acct), text);
@@ -1448,8 +1449,8 @@ public class CommandLineInterface {
         String urlString = String.format("https://%s/api/v1/statuses/%s/context", Utils.getProperty(settingsJsonObject, Literals.instance.name()), Utils.getProperty(jsonElement, Literals.id.name()));
         JsonElement contextJsonElement = getJsonElement(urlString);
         //    System.out.format("%s\n", contextJsonElement.toString());
-        JsonArray descendants = contextJsonElement.getAsJsonObject().getAsJsonArray("descendants");
-        JsonArray ancestors = contextJsonElement.getAsJsonObject().getAsJsonArray("ancestors");
+        JsonArray descendants = contextJsonElement.getAsJsonObject().getAsJsonArray(Literals.descendants.name());
+        JsonArray ancestors = contextJsonElement.getAsJsonObject().getAsJsonArray(Literals.ancestors.name());
         JsonArray jsonArray = new JsonArray();
         for (JsonElement je : descendants) {
             jsonArray.add(je);
