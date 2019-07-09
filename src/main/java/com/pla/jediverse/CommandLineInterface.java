@@ -68,7 +68,7 @@ public class CommandLineInterface {
         browserCommand, client_name, scopes, website, grant_type, access_token, refresh_token,
         redirect_uri, redirect_uris, client_id, client_secret, code, expires_in, created_at, content, type, status,
         none, search, clear, about, blocks, context, debug, ok, url, go, notification, event, payload, acct, display_name,
-        properties, local, notifications, timeline, note, tl, following, followers, lists, gc, stop, home, post, unlisted,
+        properties, local, notifications, timeline, note, tl, following, followers, lists, gc, stop, home, post, POST, DELETE, unlisted,
         follow, reblog, favourite, mention, direct, fav, reply, rep, help, quit, exit, whoami, unfav, account_ids, username,
         visibility, upload, unfollow, title, media_ids, file, description, authorization_code, followed_by, history, day, uses, name,
         ancestors, descendants, account, accounts, hashtags, statuses, media_attachments
@@ -1248,7 +1248,7 @@ public class CommandLineInterface {
             urlConnection.setRequestProperty("Cache-Control", "no-cache");
             urlConnection.setRequestProperty("Accept", "application/json");
             urlConnection.setUseCaches(false);
-            urlConnection.setRequestMethod(Literals.post.name());
+            urlConnection.setRequestMethod(Literals.POST.name());
             if (settingsJsonObject != null) {
                 String authorization = String.format("Bearer %s", Utils.getProperty(settingsJsonObject, Literals.access_token.name()));
                 urlConnection.setRequestProperty("Authorization", authorization);
@@ -1286,7 +1286,7 @@ public class CommandLineInterface {
             urlConnection.setRequestProperty("Cache-Control", "no-cache");
             urlConnection.setRequestProperty("Accept", "application/json");
             urlConnection.setUseCaches(false);
-            urlConnection.setRequestMethod("DELETE");
+            urlConnection.setRequestMethod(Literals.DELETE.name());
             if (settingsJsonObject != null) {
                 String authorization = String.format("Bearer %s", Utils.getProperty(settingsJsonObject, Literals.access_token.name()));
                 urlConnection.setRequestProperty("Authorization", authorization);
