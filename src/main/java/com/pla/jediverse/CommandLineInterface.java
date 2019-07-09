@@ -63,6 +63,13 @@ public class CommandLineInterface {
     private File jsonLoggerFile;
     private ArrayList<String> streams = new ArrayList<>();
 
+    private enum PropertyNames {
+        audioFileNotifications, audioFileFails, id, instance, me, milliseconds, quantity,
+        browserCommand, client_name, scopes, website, grant_type, access_token, refresh_token,
+        redirect_uri, redirect_uris, client_id, client_secret, code, expires_in, created_at, content, type, status,
+        none, search, clear, about, blocks, context
+    }
+
     private CommandLineInterface() {
         setup();
         try {
@@ -130,7 +137,7 @@ public class CommandLineInterface {
 
     private void playAudioNotification() {
         String audioFileName = getAudioFileNameNotifications();
-        if ("none".equalsIgnoreCase(audioFileName)) {
+        if (PropertyNames.none.name().equalsIgnoreCase(audioFileName)) {
             return;
         }
         playAudio(audioFileName);
@@ -138,7 +145,7 @@ public class CommandLineInterface {
 
     private void playAudioFail() {
         String audioFileName = getAudioFileNameFails();
-        if ("none".equalsIgnoreCase(audioFileName)) {
+        if (PropertyNames.none.name().equalsIgnoreCase(audioFileName)) {
             return;
         }
         playAudio(audioFileName);
@@ -192,6 +199,7 @@ public class CommandLineInterface {
             return audioFileName;
         }
     }
+
     private String getAudioFileNameFails() {
         String audioFileName = Utils.getProperty(settingsJsonObject, PropertyNames.audioFileFails.name());
         if (Utils.isBlank(audioFileName)) {
@@ -232,10 +240,10 @@ public class CommandLineInterface {
                 continue;
             }
             String[] words = line.split("\\s+");
-            if ("search".equals(words[0]) && words.length > 1) {
+            if (PropertyNames.search.name().equals(words[0]) && words.length > 1) {
                 search(line);
             }
-            if ("clear".equals(words[0])) {
+            if (PropertyNames.clear.name().equals(words[0])) {
                 System.out.print("\033[H\033[2J");
                 System.out.flush();
             }
@@ -262,10 +270,10 @@ public class CommandLineInterface {
                     e.printStackTrace();
                 }
             }
-            if ("about".equals(words[0])) {
+            if (PropertyNames.about.name().equals(words[0])) {
                 about();
             }
-            if ("blocks".equals(words[0])) {
+            if (PropertyNames.blocks.name().equals(words[0])) {
                 blocks();
             }
             if ("properties".equals(words[0])) {
@@ -412,13 +420,13 @@ public class CommandLineInterface {
                         System.out.format("Item at index: %d not found.\n", index);
                     } else {
                         JsonElement jsonElement = jsonArrayAll.get(index);
-                        String type = Utils.getProperty(jsonElement, "type");
+                        String type = Utils.getProperty(jsonElement, PropertyNames.type.name());
                         if ("favourite".equals(type) || "reblog".equals(type) || "follow".equals(type)) {
                             System.out.format("You can't reply to a %s.\n", type);
                         } else {
                             String text = line.substring(line.indexOf(words[1]) + words[1].length());
                             if ("mention".equals(type)) {
-                                JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
+                                JsonElement statusJe = jsonElement.getAsJsonObject().get(PropertyNames.status.name());
                                 String visibility = Utils.getProperty(statusJe, "visibility");
                                 postStatus(text, Utils.getProperty(statusJe, PropertyNames.id.name()), visibility);
                             } else {
@@ -439,8 +447,8 @@ public class CommandLineInterface {
                 JsonElement jsonElement = jsonArrayAll.get(index);
                 String id = Utils.getProperty(jsonElement, PropertyNames.id.name());
                 //     System.out.format("Fav this: %s\n", jsonElement.toString());
-                if ("mention".equals(Utils.getProperty(jsonElement, "type"))) {
-                    JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
+                if ("mention".equals(Utils.getProperty(jsonElement, PropertyNames.type.name()))) {
+                    JsonElement statusJe = jsonElement.getAsJsonObject().get(PropertyNames.status.name());
                     id = Utils.getProperty(statusJe, PropertyNames.id.name());
                 }
                 favourite(id);
@@ -463,7 +471,7 @@ public class CommandLineInterface {
                 JsonElement jsonElement = jsonArrayAll.get(index);
                 String urlString = Utils.getProperty(jsonElement, "url");
                 if (Utils.isBlank(urlString)) {
-                    JsonElement status = jsonElement.getAsJsonObject().get("status");
+                    JsonElement status = jsonElement.getAsJsonObject().get(PropertyNames.status.name());
                     urlString = Utils.getProperty(status, "url");
                 }
                 if (Utils.isNotBlank(urlString)) {
@@ -475,7 +483,7 @@ public class CommandLineInterface {
                     Utils.run(new String[]{browserCommand, urlString});
                 }
             }
-            if (words.length == 2 && "context".equals(words[0])) {
+            if (words.length == 2 && PropertyNames.context.name().equals(words[0])) {
                 int index = Utils.getInt(words[1]);
                 if (index > jsonArrayAll.size()) {
                     System.out.format("Item %d not found.", index);
@@ -705,7 +713,7 @@ public class CommandLineInterface {
 
     private void updateAudioFileNameSetting(String audioFileName, PropertyNames propertyName) {
         File file = new File(audioFileName);
-        if (!"none".equalsIgnoreCase(audioFileName) && !file.exists()) {
+        if (!PropertyNames.none.name().equalsIgnoreCase(audioFileName) && !file.exists()) {
             System.out.format("Audio file %s not found.\n", audioFileName);
             return;
         }
@@ -813,7 +821,7 @@ public class CommandLineInterface {
     private void postStatus(String text, String inReplyToId, String visibility) {
         String urlString = String.format("https://%s/api/v1/statuses", Utils.getProperty(settingsJsonObject, PropertyNames.instance.name()));
         JsonObject params = new JsonObject();
-        params.addProperty("status", text);
+        params.addProperty(PropertyNames.status.name(), text);
         params.addProperty("visibility", visibility);
         if (!mediaArrayList.isEmpty()) {
             JsonArray jsonArray = new JsonArray();
@@ -830,9 +838,6 @@ public class CommandLineInterface {
         mediaArrayList.clear();
     }
 
-    private enum PropertyNames {
-        audioFileNotifications, audioFileFails, id, instance, me, milliseconds, quantity, browserCommand, client_name, scopes, website, grant_type, access_token, refresh_token, redirect_uris, client_id, client_secret, code, expires_in, created_at
-    }
 
     private void createApp() {
         String prompt = "Type your instance name and press ENTER. For example: pleroma.site";
@@ -867,7 +872,7 @@ public class CommandLineInterface {
         params.addProperty(PropertyNames.client_secret.name(), jsonObject.get(PropertyNames.client_secret.name()).getAsString());
         params.addProperty(PropertyNames.grant_type.name(), "authorization_code");
         params.addProperty(PropertyNames.code.name(), token);
-        params.addProperty(PropertyNames.redirect_uris.name(), jsonObject.get(PropertyNames.redirect_uris.name()).getAsString());
+        params.addProperty(PropertyNames.redirect_uri.name(), jsonObject.get(PropertyNames.redirect_uri.name()).getAsString());
         JsonObject outputJsonObject = postAsJson(Utils.getUrl(urlString), params.toString());
         jsonObject.addProperty(PropertyNames.access_token.name(), outputJsonObject.get(PropertyNames.access_token.name()).getAsString());
         jsonObject.addProperty(PropertyNames.refresh_token.name(), Utils.getProperty(outputJsonObject, PropertyNames.refresh_token.name()));
@@ -1068,8 +1073,8 @@ public class CommandLineInterface {
             return;
         }
         String displayName = getAccountDisplayName(accountJe);
-        String createdAt = Utils.getProperty(jsonElement, "created_at");
-        String content = Utils.getProperty(jsonElement, "content");
+        String createdAt = Utils.getProperty(jsonElement, PropertyNames.created_at.name());
+        String content = Utils.getProperty(jsonElement, PropertyNames.content.name());
         String text = "";
         if (Utils.isNotBlank(content)) {
             text = Jsoup.parse(content).text();
@@ -1078,13 +1083,13 @@ public class CommandLineInterface {
             String searchStringHighlighted = reverseVideo(searchString);
             text = text.replaceAll(searchString, searchStringHighlighted);
         }
-        String type = Utils.getProperty(jsonElement, "type");
+        String type = Utils.getProperty(jsonElement, PropertyNames.type.name());
         if ("favourite".equals(type)) {
             symbol = Utils.SYMBOL_HEART;
             if (Utils.isBlank(text)) {
-                JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
+                JsonElement statusJe = jsonElement.getAsJsonObject().get(PropertyNames.status.name());
                 if (Utils.isJsonObject(statusJe)) {
-                    content = Utils.getProperty(statusJe, "content");
+                    content = Utils.getProperty(statusJe, PropertyNames.content.name());
                     if (Utils.isNotBlank(content)) {
                         text = Jsoup.parse(content).text();
                     }
@@ -1095,7 +1100,7 @@ public class CommandLineInterface {
             text = String.format("followed you. %s", Utils.getProperty(accountJe, "url"));
         }
         if ("reblog".equals(type) && Utils.isBlank(text)) {
-            JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
+            JsonElement statusJe = jsonElement.getAsJsonObject().get(PropertyNames.status.name());
             if (Utils.isJsonObject(statusJe)) {
                 text = String.format("repeated your status %s.", Utils.getProperty(statusJe, "url"));
             }
@@ -1154,26 +1159,26 @@ public class CommandLineInterface {
             logger.info(gson.toJson(jsonElement));
             String symbol = Utils.SYMBOL_PENCIL;
             String text = "";
-            String type = Utils.getProperty(jsonElement, "type");
-            String createdAt = Utils.getProperty(jsonElement, "created_at");
+            String type = Utils.getProperty(jsonElement, PropertyNames.type.name());
+            String createdAt = Utils.getProperty(jsonElement, PropertyNames.created_at.name());
             String dateDisplay = Utils.getDateDisplay(Utils.toDate(createdAt));
             if ("favourite".equals(type)) {
                 symbol = Utils.SYMBOL_HEART;
-                JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
-                text = Jsoup.parse(Utils.getProperty(statusJe, "content")).text();
+                JsonElement statusJe = jsonElement.getAsJsonObject().get(PropertyNames.status.name());
+                text = Jsoup.parse(Utils.getProperty(statusJe, PropertyNames.content.name())).text();
             }
             if ("follow".equals(type)) {
                 symbol = Utils.SYMBOL_MAILBOX;
             }
             if ("reblog".equals(type)) {
                 symbol = Utils.SYMBOL_REPEAT;
-                JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
-                text = Jsoup.parse(Utils.getProperty(statusJe, "content")).text();
+                JsonElement statusJe = jsonElement.getAsJsonObject().get(PropertyNames.status.name());
+                text = Jsoup.parse(Utils.getProperty(statusJe, PropertyNames.content.name())).text();
             }
             if ("mention".equals(type)) {
                 symbol = Utils.SYMBOL_SPEAKER;
-                JsonElement statusJe = jsonElement.getAsJsonObject().get("status");
-                text = Jsoup.parse(Utils.getProperty(statusJe, "content")).text();
+                JsonElement statusJe = jsonElement.getAsJsonObject().get(PropertyNames.status.name());
+                text = Jsoup.parse(Utils.getProperty(statusJe, PropertyNames.content.name())).text();
             }
             JsonElement accountJe = jsonElement.getAsJsonObject().get("account");
             String acct = Utils.getProperty(accountJe, "acct");
