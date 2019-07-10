@@ -620,7 +620,7 @@ public class CommandLineInterface {
         JsonElement jsonElement = postAsJson(Utils.getUrl(urlString), params.toString());
         //      System.out.format("RESPONSE: %s\n", jsonElement.toString());
     }
-
+// TODO refactor this so it could be re-used for search(). Search doesn't handle multiple pages currently.
     private void followingFollowers(String action) {
         jsonArrayFollowing = new JsonArray();
         JsonElement jsonElementMe = whoami();
@@ -741,7 +741,6 @@ public class CommandLineInterface {
         if (propertyName == Literals.audioFileNotifications) {
             playAudioNotification();
         }
-
     }
 
     private JsonObject chooseInstance(JsonArray settingsJsonArray) {
