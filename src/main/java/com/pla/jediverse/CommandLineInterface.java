@@ -71,7 +71,7 @@ public class CommandLineInterface {
         properties, local, notifications, timeline, note, tl, following, followers, lists, gc, stop, home, post, POST, DELETE, unlisted,
         follow, reblog, favourite, mention, direct, fav, reply, rep, help, quit, exit, whoami, unfav, account_ids, username,
         visibility, upload, unfollow, title, media_ids, file, description, authorization_code, followed_by, history, day, uses, name,
-        ancestors, descendants, account, accounts, hashtags, statuses, media_attachments
+        ancestors, descendants, account, accounts, hashtags, statuses, media_attachments, aa, sa, da
     }
 
     private CommandLineInterface() {
@@ -342,14 +342,14 @@ public class CommandLineInterface {
             if ("audio-fails".equals(words[0]) && words.length == 2) {
                 updateAudioFileNameSetting(words[1], Literals.audioFileFails);
             }
-            if ("aa".equals(line)) {
+            if (Literals.aa.name().equals(line)) {
                 createApp();
             }
-            if ("sa".equals(line)) {
+            if (Literals.sa.name().equals(line)) {
                 settingsJsonObject = chooseInstance(getSettingsJsonArray());
                 System.out.format("Using instance: %s\n", settingsJsonObject.get(Literals.instance.name()));
             }
-            if ("da".equals(line)) {
+            if (Literals.da.name().equals(line)) {
                 deleteInstance(getSettingsJsonArray());
                 settingsJsonObject = chooseInstance(getSettingsJsonArray());
             }
