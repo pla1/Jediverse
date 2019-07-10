@@ -149,9 +149,9 @@ post-direct
     Post a direct status. Pass the text.
     https://youtu.be/RkGsO_nJ-OI
 
-post-private
-    Post a private status. Pass the text.
-    https://youtu.be/zMjKO4QkGC8
+post-followers
+    Post a status to your followers. Pass the text.
+    https://youtu.be/vKWFNtkSMz0
 
 post-unlisted
     Post an unlisted status. Pass the text.

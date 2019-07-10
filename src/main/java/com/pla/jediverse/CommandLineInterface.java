@@ -409,8 +409,8 @@ public class CommandLineInterface {
                 String text = line.substring(5);
                 postStatus(text, null, "public");
             }
-            if (words.length > 1 && "post-private".equals(words[0])) {
-                String text = line.substring(5);
+            if (words.length > 1 && "post-followers".equals(words[0])) {
+                String text = line.substring(15);
                 postStatus(text, null, "private");
             }
             if (words.length > 1 && "post-unlisted".equals(words[0])) {
