@@ -50,11 +50,12 @@ following
     List the accounts you are following. This may take a few minutes if you are following many accounts.
     https://youtu.be/EQDzz2TQgT8
 
-gc  Suggest Java garbage collection
+gc
+    Suggest to the JVM that it perform a garbage collection
     https://youtu.be/HoeT9T43yx4
 
 go
-    Open your default browser to the status. Pass the status index. Uses xdg-open. YMMV.
+    Open your default browser to the status. Pass the status index. Uses xdg-open by default. You can set it to your favorite browser via browser-command.
     https://youtu.be/Qt3YnQ2LAVo
 
 help or ?

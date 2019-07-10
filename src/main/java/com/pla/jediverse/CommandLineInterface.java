@@ -990,6 +990,10 @@ public class CommandLineInterface {
         for (JsonElement je : hashtags) {
             JsonObject hashtag = je.getAsJsonObject();
             JsonArray history = hashtag.getAsJsonArray(Literals.history.name());
+            if (history == null) {
+                System.out.format("No results.\n");
+                return;
+            }
             for (JsonElement historyElement : history) {
                 long day = Utils.getLong(Utils.getProperty(historyElement, Literals.day.name()));
                 Date date = new Date(day * 1000);
