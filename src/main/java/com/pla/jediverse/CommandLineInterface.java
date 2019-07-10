@@ -732,7 +732,16 @@ public class CommandLineInterface {
         Utils.write(getSettingsFileName(), pretty);
         System.out.format("Audio file name now set to %s and settings saved for instance: %s\n",
                 audioFileName, Utils.getProperty(settingsJsonObject, Literals.instance.name()));
-        playAudioNotification();
+        if (audioFileName.equals(Literals.none.name())) {
+            return;
+        }
+        if (propertyName == Literals.audioFileFails) {
+            playAudioFail();
+        }
+        if (propertyName == Literals.audioFileNotifications) {
+            playAudioNotification();
+        }
+
     }
 
     private JsonObject chooseInstance(JsonArray settingsJsonArray) {

@@ -16,11 +16,11 @@ account-unfollow
 
 audio-notifications
     Set the audio file used for a notification bell. The default is ding.wav. Set it to "none" to disable. Does not play mp3 files. Convert your mp3 file to wav using ffmpeg. Example: ffmpeg -i bell.mp3 bell.wav
-    https://youtu.be/mjZmlKV2tts
+    https://youtu.be/8FTL6Xb-qEs
 
 audio-fails
     Set the audio file used for a error conditions. The default is fail.wav. Set it to "none" to disable. Does not play mp3 files. Convert your mp3 file to wav using ffmpeg. Example: ffmpeg -i bell.mp3 bell.wav
-
+    https://youtu.be/IiJc1Nz_4GE
 
 blocks
     List blocked accounts.
@@ -51,6 +51,7 @@ following
     https://youtu.be/EQDzz2TQgT8
 
 gc  Suggest Java garbage collection
+    https://youtu.be/HoeT9T43yx4
 
 go
     Open your default browser to the status. Pass the status index. Uses xdg-open. YMMV.
@@ -58,6 +59,7 @@ go
 
 help or ?
     Show this help file.
+
 
 list-accounts
     Show accounts on list. Pass the list ID from the lists output.
@@ -166,7 +168,6 @@ upload
 upload-browse
     Upload media file to be attached to your next post. Uses the Java file chooser, the only GUI feature in Jediverse.
     https://youtu.be/Y6SPEbAA8b0
-
 
 upload-clear
     Clears the media file attachment queue in-case you changed your mind. Your next post will not include any media attachments.
