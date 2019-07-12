@@ -961,10 +961,16 @@ public class CommandLineInterface {
         String searchString = line.substring(15);
         String encodedQuery = Utils.urlEncodeComponent(searchString);
         String urlString = String.format("https://%s/api/v1/accounts/search?q=%s", Utils.getProperty(settingsJsonObject, Literals.instance.name()), encodedQuery);
-        System.out.format("Searching for account \"%s\". This may take some time.\n", line);
-        jsonArrayAccounts = getJsonArray(urlString);
+        System.out.format("Searching for account \"%s\". This may take some time.\n", searchString);
+        try {
+            jsonArrayAccounts = getJsonArray(urlString);
+        } catch (Exception e) {
+            System.out.format("Account search failed for \"%s\" with exception %s.\n", searchString, e.getLocalizedMessage());
+            return;
+        }
         if (jsonArrayAccounts == null) {
-            System.out.format("Account search failed for \"%s\".\n", line);
+            System.out.format("Account search failed for \"%s\".\n", searchString);
+            return;
         }
         System.out.format("%d results for \"%s\".\n", jsonArrayAccounts.size(), line);
         int i = 0;
