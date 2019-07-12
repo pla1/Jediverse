@@ -193,6 +193,7 @@ public class CommandLineInterface {
             }
         }
         System.out.format("Using instance: %s\n", settingsJsonObject.get(Literals.instance.name()));
+        System.out.format("Type 'help' and press 'Enter' for a list of things you can do.\n");
     }
 
     private String getAudioFileNameNotifications() {
