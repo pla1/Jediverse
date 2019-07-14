@@ -1,6 +1,6 @@
 package com.pla.jediverse;
 
-public class Account implements Comparable<Account> {
+class Account implements Comparable<Account> {
     private String displayName;
     private String accountName;
     private String url;

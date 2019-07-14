@@ -62,7 +62,7 @@ public class Utils {
         if (s == null) {
             return "";
         }
-        return s.replaceAll("[^A-Za-z ]+","");
+        return s.replaceAll("[^A-Za-z ]+", "");
     }
 
 
@@ -129,13 +129,13 @@ public class Utils {
 
     public static String getProperty(JsonElement jsonElement, String propertyName) {
         if (jsonElement == null) {
-            return null;
+            return "";
         }
         JsonElement property = jsonElement.getAsJsonObject().get(propertyName);
         if (property != null && !property.isJsonNull()) {
             return property.getAsString();
         }
-        return null;
+        return "";
     }
 
     public static void sleep(long seconds) {
@@ -242,12 +242,10 @@ public class Utils {
                         closed = true;
                     }
                     if (!closed) {
-                        String msg = "Object not closed. Object type not defined in this close method. " + object.getClass().getName()
-                                + " class stack: "
-                                + getClassNames();
                         System.out.format("Object not closed. Object type not defined in this close method. Name: %s Stack: %s\n", object.getClass().getName(), getClassNames());
                     }
                 } catch (Exception e) {
+                    System.out.println(e.getLocalizedMessage());
                 }
             }
         }
@@ -318,6 +316,7 @@ public class Utils {
         }
         return uri;
     }
+
     public static boolean isSameDay(Date date1, Date date2) {
         Calendar calendar1 = Calendar.getInstance();
         Calendar calendar2 = Calendar.getInstance();
@@ -523,6 +522,7 @@ public class Utils {
     public static boolean isSolaris() {
         return OS.contains("sunos");
     }
+
     public static void printResourceUtilization() {
         NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
         long bytes = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
@@ -534,13 +534,27 @@ public class Utils {
             System.out.format("PID %d\n%s\n", pid, output);
         }
     }
+
     public static String getFullDate(Date date) {
         SimpleDateFormat sdf = new SimpleDateFormat("EEE MMM dd yyyy");
         return sdf.format(date);
     }
+
     public static void printProperties() {
         Properties p = System.getProperties();
         p.list(System.out);
+    }
+
+    public static String capitalize(String s) {
+        if (isBlank(s)) {
+            return s;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(s.substring(0, 1).toUpperCase());
+        if (s.length() > 1) {
+            sb.append(s.substring(1));
+        }
+        return sb.toString();
     }
 
 }

@@ -58,10 +58,11 @@ public class CommandLineInterface {
     private Logger logger;
     private ArrayList<WebSocket> webSockets = new ArrayList<>();
     private JsonArray jsonArrayFollowing = new JsonArray();
+    private JsonArray jsonArrayFollowers = new JsonArray();
     private ArrayList<JsonElement> mediaArrayList = new ArrayList<>();
     private JsonArray jsonArrayAccounts = new JsonArray();
     private File jsonLoggerFile;
-    private ArrayList<String> streams = new ArrayList<>();
+    private final ArrayList<String> streams = new ArrayList<>();
 
     private enum Literals {
         audioFileNotifications, audioFileFails, id, instance, me, milliseconds, quantity,
@@ -119,6 +120,7 @@ public class CommandLineInterface {
         jsonArrayAccounts = new JsonArray();
         mediaArrayList = new ArrayList<>();
         jsonArrayFollowing = new JsonArray();
+        jsonArrayFollowers = new JsonArray();
         webSockets = new ArrayList<>();
         jsonArrayAll = new JsonArray();
     }
@@ -400,7 +402,7 @@ public class CommandLineInterface {
                 timeline(Literals.home.name(), "");
             }
             if (Literals.notifications.name().equals(line) || Literals.note.name().equals(line)) {
-                notifications("");
+                notifications();
             }
             if (words.length > 1 && "post-direct".equals(words[0])) {
                 String text = line.substring(12);
@@ -495,7 +497,8 @@ public class CommandLineInterface {
                     continue;
                 }
                 JsonElement jsonElement = jsonArrayAll.get(index);
-                System.out.format("\n\nStart of context\n");
+                System.out.format("\n\nStart of context for ");
+                printJsonElement(jsonElement, "", "");
                 context(jsonElement);
             }
             if (words.length == 2 && Literals.unfav.name().equals(words[0])) {
@@ -525,7 +528,11 @@ public class CommandLineInterface {
 
     private void printWhoAmI() {
         JsonElement jsonElement = whoami();
-        System.out.format("%s %s\n", Utils.getProperty(jsonElement, Literals.username.name()), Utils.getProperty(jsonElement, Literals.url.name()));
+        System.out.format("%s %s %s\n\t%s\n",
+                Utils.getProperty(jsonElement, Literals.display_name.name()),
+                Utils.getProperty(jsonElement, Literals.username.name()),
+                Utils.getProperty(jsonElement, Literals.url.name()),
+                Jsoup.parse(Utils.getProperty(jsonElement, Literals.note.name())).text());
     }
 
     private void listDeleteAccount(String listId, String accountIndex) {
@@ -562,7 +569,12 @@ public class CommandLineInterface {
             int i = 0;
             for (JsonElement account : jsonArrayAccounts) {
                 System.out.format("%d %s %s %s %s %s\n",
-                        i++, Utils.getProperty(account, Literals.acct.name()), Utils.getProperty(account, Literals.username.name()), Utils.getProperty(account, Literals.display_name.name()), Utils.getProperty(account, Literals.url.name()), Jsoup.parse(Utils.getProperty(account, Literals.note.name())).text());
+                        i++,
+                        Utils.getProperty(account, Literals.acct.name()),
+                        Utils.getProperty(account, Literals.username.name()),
+                        Utils.getProperty(account, Literals.display_name.name()),
+                        Utils.getProperty(account, Literals.url.name()),
+                        Jsoup.parse(Utils.getProperty(account, Literals.note.name())).text());
             }
             return;
         }
@@ -621,14 +633,17 @@ public class CommandLineInterface {
         JsonElement jsonElement = postAsJson(Utils.getUrl(urlString), params.toString());
         //      System.out.format("RESPONSE: %s\n", jsonElement.toString());
     }
-// TODO refactor this so it could be re-used for search(). Search doesn't handle multiple pages currently.
+
+    // TODO refactor this so it could be re-used for search(). Search doesn't handle multiple pages currently.
     private void followingFollowers(String action) {
-        jsonArrayFollowing = new JsonArray();
+
         JsonElement jsonElementMe = whoami();
         if (Literals.following.name().equals(action)) {
+            jsonArrayFollowing = new JsonArray();
             System.out.format("Gathering accounts that %s follows.\n", Utils.getProperty(jsonElementMe, Literals.acct.name()));
         }
         if (Literals.followers.name().equals(action)) {
+            jsonArrayFollowers = new JsonArray();
             System.out.format("Gathering accounts that are following %s.\n", Utils.getProperty(jsonElementMe, Literals.acct.name()));
         }
         String id = Utils.getProperty(jsonElementMe, Literals.id.name());
@@ -644,8 +659,16 @@ public class CommandLineInterface {
                 InputStream is = urlConnection.getInputStream();
                 InputStreamReader isr = new InputStreamReader(is);
                 JsonArray jsonArray = gson.fromJson(isr, JsonArray.class);
-                jsonArrayFollowing.addAll(jsonArray);
-                System.out.format("Gathered %d accounts. Total so far %d.\n", jsonArray.size(), jsonArrayFollowing.size());
+                if (jsonArray.size() > 0) {
+                    if (Literals.following.name().equals(action)) {
+                        jsonArrayFollowing.addAll(jsonArray);
+                        System.out.format("Gathered %d accounts. Total so far %d.\n", jsonArray.size(), jsonArrayFollowing.size());
+                    }
+                    if (Literals.followers.name().equals(action)) {
+                        jsonArrayFollowers.addAll(jsonArray);
+                        System.out.format("Gathered %d accounts. Total so far %d.\n", jsonArray.size(), jsonArrayFollowers.size());
+                    }
+                }
                 url = null;
                 if (Utils.isNotBlank(linkHeader)) {
                     //      System.out.format("Link header: %s\n", linkHeader);
@@ -666,15 +689,34 @@ public class CommandLineInterface {
             }
         }
 
-        ArrayList<Account> arrayListFollowing = new ArrayList<>();
-        for (JsonElement jsonElement : jsonArrayFollowing) {
-            arrayListFollowing.add(new Account(Utils.getProperty(jsonElement, Literals.id.name()), Utils.getProperty(jsonElement, Literals.acct.name()), Utils.getProperty(jsonElement, Literals.display_name.name()), Utils.getProperty(jsonElement, Literals.url.name())));
+        ArrayList<Account> arrayListAccounts = new ArrayList<>();
+        if (Literals.following.name().equals(action)) {
+            for (JsonElement jsonElement : jsonArrayFollowing) {
+                arrayListAccounts.add(transfer(jsonElement));
+            }
         }
-        Collections.sort(arrayListFollowing);
-        for (Account account : arrayListFollowing) {
+        if (Literals.followers.name().equals(action)) {
+            for (JsonElement jsonElement : jsonArrayFollowers) {
+                arrayListAccounts.add(transfer(jsonElement));
+            }
+        }
+        Collections.sort(arrayListAccounts);
+        for (Account account : arrayListAccounts) {
             System.out.format("%s %s\n", green(account.getDisplayNameAndAccount()), account.getUrl());
         }
-        System.out.format("\nFollowing %d accounts.\n", jsonArrayFollowing.size());
+        if (Literals.following.name().equals(action)) {
+            System.out.format("\nFollowing %d accounts.\n", jsonArrayFollowing.size());
+        }
+        if (Literals.followers.name().equals(action)) {
+            System.out.format("\n%d followers.\n", jsonArrayFollowers.size());
+        }
+    }
+
+    private Account transfer(JsonElement jsonElement) {
+        return new Account(Utils.getProperty(jsonElement, Literals.id.name()),
+                Utils.getProperty(jsonElement, Literals.acct.name()),
+                Utils.getProperty(jsonElement, Literals.display_name.name()),
+                Utils.getProperty(jsonElement, Literals.url.name()));
     }
 
     private JsonElement listCreate(String title) {
@@ -977,7 +1019,12 @@ public class CommandLineInterface {
         int i = 0;
         for (JsonElement account : jsonArrayAccounts) {
             System.out.format("%d %s %s %s %s %s\n",
-                    i++, Utils.getProperty(account, Literals.acct.name()), Utils.getProperty(account, Literals.username.name()), Utils.getProperty(account, Literals.display_name.name()), Utils.getProperty(account, Literals.url.name()), Jsoup.parse(Utils.getProperty(account, Literals.note.name())).text());
+                    i++,
+                    Utils.getProperty(account, Literals.acct.name()),
+                    Utils.getProperty(account, Literals.username.name()),
+                    Utils.getProperty(account, Literals.display_name.name()),
+                    Utils.getProperty(account, Literals.url.name()),
+                    Jsoup.parse(Utils.getProperty(account, Literals.note.name())).text());
         }
         if (jsonArrayAccounts.size() == 1) {
             System.out.format("Use account-follow 0 or account-unfollow 0.\n");
@@ -1167,8 +1214,8 @@ public class CommandLineInterface {
         return String.format("%s%s%s", Utils.ANSI_REVERSE_VIDEO, s, Utils.ANSI_RESET);
     }
 
-    private void notifications(String extra) {
-        String urlString = String.format("https://%s/api/v1/notifications?limit=%d%s", settingsJsonObject.get(Literals.instance.name()).getAsString(), getQuantity(), extra);
+    private void notifications() {
+        String urlString = String.format("https://%s/api/v1/notifications?limit=%d", settingsJsonObject.get(Literals.instance.name()).getAsString(), getQuantity());
         JsonArray jsonArray = getJsonArray(urlString);
         if (jsonArray == null) {
             System.out.format("Listing notifications failed.\n");
@@ -1406,7 +1453,7 @@ public class CommandLineInterface {
         //   Utils.printProperties();
     }
 
-    public Logger getLogger() {
+    private Logger getLogger() {
         Logger logger = Logger.getLogger("JediverseJsonLog");
         if (!debug) {
             LogManager.getLogManager().reset();
@@ -1465,11 +1512,20 @@ public class CommandLineInterface {
     }
 
     private void context(JsonElement jsonElement) {
-        String urlString = String.format("https://%s/api/v1/statuses/%s/context", Utils.getProperty(settingsJsonObject, Literals.instance.name()), Utils.getProperty(jsonElement, Literals.id.name()));
+        String urlString = String.format("https://%s/api/v1/statuses/%s/context",
+                Utils.getProperty(settingsJsonObject, Literals.instance.name()),
+                Utils.getProperty(jsonElement, Literals.id.name()));
         JsonElement contextJsonElement = getJsonElement(urlString);
-        //    System.out.format("%s\n", contextJsonElement.toString());
-        JsonArray descendants = contextJsonElement.getAsJsonObject().getAsJsonArray(Literals.descendants.name());
-        JsonArray ancestors = contextJsonElement.getAsJsonObject().getAsJsonArray(Literals.ancestors.name());
+        // System.out.format("%s\n", contextJsonElement.toString());
+        JsonArray descendants = new JsonArray();
+        JsonArray ancestors = new JsonArray();
+        if (Utils.isJsonObject(contextJsonElement)) {
+            JsonObject contextJsonObject = contextJsonElement.getAsJsonObject();
+            if (contextJsonObject != null) {
+                descendants.addAll(contextJsonObject.getAsJsonArray(Literals.descendants.name()));
+                ancestors.addAll(contextJsonObject.getAsJsonArray(Literals.ancestors.name()));
+            }
+        }
         JsonArray jsonArray = new JsonArray();
         for (JsonElement je : descendants) {
             jsonArray.add(je);
@@ -1479,13 +1535,12 @@ public class CommandLineInterface {
         }
         printJsonElements(jsonArray, null);
         System.out.format("\nEnd of context\n\n");
-
     }
 
     private class WebSocketListener implements Listener {
-        private String stream;
+        private final String stream;
         private StringBuilder sb = new StringBuilder();
-        private JsonParser jsonParser = new JsonParser();
+        private final JsonParser jsonParser = new JsonParser();
 
         WebSocketListener(String stream) {
             this.stream = stream;
@@ -1512,8 +1567,6 @@ public class CommandLineInterface {
                     } else {
                         System.out.format("Payload is blank.\n");
                     }
-                } else {
-                    //     System.out.format("JSON element is null.\n");
                 }
                 sb = new StringBuilder();
             } else {
