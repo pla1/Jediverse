@@ -110,7 +110,7 @@ sa
     Switch to another account in Jediverse. Type sa and press enter for a list of accounts.
     https://youtu.be/en-NWcesCaQ
 
-quit or exit
+quit or exit or Ctrl-D
     Quit Jediverse CLI program.
     https://youtu.be/OJwM0CPfShY
 
