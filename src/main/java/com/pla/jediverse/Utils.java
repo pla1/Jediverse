@@ -556,5 +556,14 @@ public class Utils {
         }
         return sb.toString();
     }
+    public static String getIntegerDisplay(String s) {
+        try {
+            Integer i = Integer.parseInt(s);
+            NumberFormat numberFormat = NumberFormat.getNumberInstance();
+            return numberFormat.format(i);
+        } catch (NumberFormatException e) {
+            return s;
+        }
+    }
 
 }

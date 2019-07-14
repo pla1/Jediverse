@@ -72,7 +72,8 @@ public class CommandLineInterface {
         properties, local, notifications, timeline, note, tl, following, followers, lists, gc, stop, home, post, POST, DELETE, unlisted,
         follow, reblog, favourite, mention, direct, fav, reply, rep, help, quit, exit, whoami, unfav, account_ids, username,
         visibility, upload, unfollow, title, media_ids, file, description, authorization_code, followed_by, history, day, uses, name,
-        ancestors, descendants, account, accounts, hashtags, statuses, media_attachments, aa, sa, da
+        ancestors, descendants, account, accounts, hashtags, statuses, media_attachments, aa, sa, da, user_count, status_count,
+        domain_count, stats, registrations, version
     }
 
     private CommandLineInterface() {
@@ -256,6 +257,9 @@ public class CommandLineInterface {
             }
             if ("account-search".equals(words[0]) && words.length > 1) {
                 accountSearch(line);
+            }
+            if ("instance-info".equals(words[0]) && words.length > 1) {
+                instanceInfo(line);
             }
             if (words.length == 2 && "account-follow".equals(words[0]) && Utils.isNumeric(words[1])) {
                 accountFollowUnfollow(Utils.getInt(words[1]), true);
@@ -1614,5 +1618,22 @@ public class CommandLineInterface {
             System.out.format("Binary data received on WebSocket.\n");
             return Listener.super.onBinary(webSocket, data, last);
         }
+    }
+    private void instanceInfo(String line) {
+        String instance = line.split("\\s+")[1].trim();
+        String url = String.format("https://%s/api/v1/instance", instance);
+        JsonElement jsonElement = getJsonElement(url);
+        if (jsonElement == null) {
+            System.out.format("Failed to get instance information for %s.\n", instance);
+            return;
+        }
+        System.out.format("https://%s\n", instance);
+        System.out.format("Instance: %s\nDescription: %s\n", instance, Jsoup.parse(Utils.getProperty(jsonElement, Literals.description.name())).text());
+        System.out.format("Version: %s\n", Utils.getProperty(jsonElement, Literals.version.name()));
+        JsonElement stats = jsonElement.getAsJsonObject().get(Literals.stats.name());
+        System.out.format("Users: %s\n", Utils.getIntegerDisplay(Utils.getProperty(stats, Literals.user_count.name())));
+        System.out.format("Statuses: %s\n", Utils.getIntegerDisplay(Utils.getProperty(stats, Literals.status_count.name())));
+        System.out.format("Domains: %s\n", Utils.getIntegerDisplay(Utils.getProperty(stats, Literals.domain_count.name())));
+        System.out.format("Registration open: %s\n", Utils.isYes(Utils.getProperty(stats, Literals.registrations.name())));
     }
 }
