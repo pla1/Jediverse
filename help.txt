@@ -61,6 +61,12 @@ go
 help or ?
     Show this help file.
 
+instance-info
+    Show information about an instance. Pass the instance name. For example: instance-info pleroma.site
+
+instance-info-full
+    Show information about an instance including Pleroma MRF policies. Pass the instance name. For example. instance-info-full pleroma.site
+
 
 list-accounts
     Show accounts on list. Pass the list ID from the lists output.
