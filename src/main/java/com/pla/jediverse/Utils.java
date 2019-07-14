@@ -3,6 +3,7 @@ package com.pla.jediverse;
 
 import com.google.gson.*;
 
+
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.Clip;
 import java.io.*;
@@ -556,6 +557,7 @@ public class Utils {
         }
         return sb.toString();
     }
+
     public static String getIntegerDisplay(String s) {
         try {
             Integer i = Integer.parseInt(s);
@@ -564,6 +566,34 @@ public class Utils {
         } catch (NumberFormatException e) {
             return s;
         }
+    }
+
+    public static String toString(JsonArray jsonArray) {
+        return toString(jsonArray, false, false);
+    }
+
+    public static String toString(JsonArray jsonArray, boolean linefeed, boolean tab) {
+        if (jsonArray == null || jsonArray.isJsonNull()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        String comma = "";
+        String lineSeparator = "";
+        String tabCharacter = "";
+        for (JsonElement jsonElement : jsonArray) {
+            sb.append(comma);
+            sb.append(lineSeparator);
+            sb.append(tabCharacter);
+            sb.append(jsonElement.getAsString());
+            comma = ", ";
+            if (linefeed) {
+                lineSeparator = System.lineSeparator();
+            }
+            if (tab){
+                tabCharacter = "\t";
+            }
+        }
+        return sb.toString().trim();
     }
 
 }
