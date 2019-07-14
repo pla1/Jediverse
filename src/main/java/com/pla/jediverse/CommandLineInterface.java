@@ -73,7 +73,7 @@ public class CommandLineInterface {
         follow, reblog, favourite, mention, direct, fav, reply, rep, help, quit, exit, whoami, unfav, account_ids, username,
         visibility, upload, unfollow, title, media_ids, file, description, authorization_code, followed_by, history, day, uses, name,
         ancestors, descendants, account, accounts, hashtags, statuses, media_attachments, aa, sa, da, user_count, status_count,
-        domain_count, stats, registrations, version, protocols, staffAccounts, metadata, postFormats ,quarantined_instances, mrf_policies, mrf_simple,
+        domain_count, stats, registrations, version, protocols, staffAccounts, metadata, postFormats, quarantined_instances, mrf_policies, mrf_simple,
         federation, reject, report_removal, media_removal, federated_timeline_removal, banner_removal, avatar_removal, accept,
         media_nsfw
     }
@@ -1285,6 +1285,7 @@ public class CommandLineInterface {
     private JsonElement getJsonElement(String urlString) {
         return getJsonElement(urlString, false);
     }
+
     private JsonElement getJsonElement(String urlString, boolean ignoreExceptions) {
         URL url = Utils.getUrl(urlString);
         HttpsURLConnection urlConnection;
@@ -1629,6 +1630,7 @@ public class CommandLineInterface {
             return Listener.super.onBinary(webSocket, data, last);
         }
     }
+
     private void instanceInfo(String line, boolean full) {
         String instance = line.split("\\s+")[1].trim();
         String url = String.format("https://%s/api/v1/instance", instance);
@@ -1652,7 +1654,6 @@ public class CommandLineInterface {
         if (jsonElement == null) {
             return;
         }
-       // System.out.println(jsonElement);
         JsonObject jsonObject = jsonElement.getAsJsonObject();
         System.out.format("Protocols: %s\n", Utils.toString(jsonObject.getAsJsonArray(Literals.protocols.name())));
         JsonObject jsonObjectMetadata = jsonObject.getAsJsonObject(Literals.metadata.name());
