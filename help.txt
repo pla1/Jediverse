@@ -63,6 +63,7 @@ help or ?
 
 instance-info
     Show information about an instance. Pass the instance name. For example: instance-info pleroma.site
+    https://youtu.be/KP9I1u1uvtg
 
 instance-info-full
     Show information about an instance including Pleroma MRF policies. Pass the instance name. For example. instance-info-full pleroma.site
@@ -87,6 +88,10 @@ list-delete
 list-delete-account
     Delete an account from a list. Pass the list ID and account ID.
     https://youtu.be/OEDS2AflZwc
+
+list-timeline
+    Show timeline for a list. Pass the list ID.
+    https://youtu.be/i6RMZxTL8pQ
 
 lists
     Show lists

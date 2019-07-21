@@ -338,6 +338,9 @@ public class CommandLineInterface {
                 String id = words[1];
                 listAddAccount(id, words[2]);
             }
+            if ("list-timeline".equals(words[0]) && words.length == 2 && Utils.isNumeric(words[1])) {
+               timeline(String.format("list/%s", words[1]),"");
+            }
             if ("fed".equals(line)) {
                 timeline("public", "&local=false");
             }
