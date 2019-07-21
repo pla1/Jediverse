@@ -1331,6 +1331,7 @@ public class CommandLineInterface {
             urlConnection = (HttpsURLConnection) url.openConnection();
             urlConnection.setRequestProperty("Cache-Control", "no-cache");
             urlConnection.setRequestProperty("Accept", "application/json");
+            urlConnection.setRequestProperty("User-Agent", "Jediverse CLI");
             urlConnection.setUseCaches(false);
             urlConnection.setRequestMethod(Literals.POST.name());
             if (settingsJsonObject != null) {
