@@ -156,7 +156,7 @@ public class CommandLineInterface {
             clip.start();
 
         } catch (Exception e) {
-            e.printStackTrace();
+         //   e.printStackTrace();
         }
         //finally {
         //      Utils.close(clip, audioInputStream);
