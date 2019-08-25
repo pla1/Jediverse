@@ -52,7 +52,7 @@ public class CommandLineInterface {
     private final String DEFAULT_BROWSER_COMMAND = "/usr/bin/xdg-open";
     private final String DEFAULT_AUDIO_FILE_NAME_NOTIFICATIONS = "ding.wav";
     private final String DEFAULT_AUDIO_FILE_NAME_FAILS = "fail.wav";
-
+    private final ArrayList<String> streams = new ArrayList<>();
     private JsonObject settingsJsonObject;
     private JsonArray jsonArrayAll = new JsonArray();
     private Logger logger;
@@ -62,21 +62,6 @@ public class CommandLineInterface {
     private ArrayList<JsonElement> mediaArrayList = new ArrayList<>();
     private JsonArray jsonArrayAccounts = new JsonArray();
     private File jsonLoggerFile;
-    private final ArrayList<String> streams = new ArrayList<>();
-
-    private enum Literals {
-        audioFileNotifications, audioFileFails, id, instance, me, milliseconds, quantity,
-        browserCommand, client_name, scopes, website, grant_type, access_token, refresh_token,
-        redirect_uri, redirect_uris, client_id, client_secret, code, expires_in, created_at, content, type, status,
-        none, search, clear, about, blocks, context, debug, ok, url, go, notification, event, payload, acct, display_name,
-        properties, local, notifications, timeline, note, tl, following, followers, lists, gc, stop, home, post, POST, DELETE, unlisted,
-        follow, reblog, favourite, mention, direct, fav, reply, rep, help, quit, exit, whoami, unfav, account_ids, username,
-        visibility, upload, unfollow, title, media_ids, file, description, authorization_code, followed_by, history, day, uses, name,
-        ancestors, descendants, account, accounts, hashtags, statuses, media_attachments, aa, sa, da, user_count, status_count,
-        domain_count, stats, registrations, version, protocols, staffAccounts, metadata, postFormats, quarantined_instances, mrf_policies, mrf_simple,
-        federation, reject, report_removal, media_removal, federated_timeline_removal, banner_removal, avatar_removal, accept,
-        media_nsfw
-    }
 
     private CommandLineInterface() {
         setup();
@@ -238,8 +223,19 @@ public class CommandLineInterface {
     private void mainRoutine() {
         String line;
         boolean done = false;
+        boolean firstTime = true;
         while (!done) {
-            line = readConsole();
+            if (firstTime) {
+                firstTime = false;
+                String startupCommand = Utils.getProperty(settingsJsonObject, Literals.onstart.name());
+                if (Utils.isNotBlank(startupCommand)) {
+                    line = startupCommand;
+                } else {
+                    line = readConsole();
+                }
+            } else {
+                line = readConsole();
+            }
             if (line == null) {
                 System.out.format("Line is null.\n");
                 done = true;
@@ -339,7 +335,7 @@ public class CommandLineInterface {
                 listAddAccount(id, words[2]);
             }
             if ("list-timeline".equals(words[0]) && words.length == 2 && Utils.isNumeric(words[1])) {
-               timeline(String.format("list/%s", words[1]),"");
+                timeline(String.format("list/%s", words[1]), "");
             }
             if ("fed".equals(line)) {
                 timeline("public", "&local=false");
@@ -350,6 +346,10 @@ public class CommandLineInterface {
             }
             if ("browser-command".equals(words[0]) && words.length == 2) {
                 updateBrowserCommandSettings(words[1]);
+            }
+            if (Literals.onstart.name().equals(words[0])) {
+                updateOnstartCommandSettings(line);
+
             }
             if ("audio-notifications".equals(words[0]) && words.length == 2) {
                 updateAudioFileNameSetting(words[1], Literals.audioFileNotifications);
@@ -619,7 +619,6 @@ public class CommandLineInterface {
 
         }
     }
-
 
     private void listAddAccount(String id, String searchString) {
         if (jsonArrayFollowing.size() == 0) {
@@ -925,8 +924,14 @@ public class CommandLineInterface {
             return;
         }
         //   System.out.format("%s\n", jsonObject.toString());
-        System.out.format("Go to https://%s/oauth/authorize?scope=%s&response_type=code&redirect_uri=%s&client_id=%s\n",
+        String urlOauthDance = String.format("https://%s/oauth/authorize?scope=%s&response_type=code&redirect_uri=%s&client_id=%s\n",
                 instance, Utils.urlEncodeComponent("write read follow push"), Utils.urlEncodeComponent(jsonObject.get("redirect_uri").getAsString()), jsonObject.get("client_id").getAsString());
+        System.out.format("Go to %s", urlOauthDance);
+        if (GraphicsEnvironment.isHeadless()) {
+
+        } else {
+
+        }
         String token = ask("Paste the token and press ENTER.");
         if (token == null || token.trim().length() < 20) {
             System.out.format("Token \"%s\" doesn't look valid. Try again.\n", token);
@@ -1556,10 +1561,82 @@ public class CommandLineInterface {
         System.out.format("\nEnd of context\n\n");
     }
 
+    private void instanceInfo(String line, boolean full) {
+        String instance = line.split("\\s+")[1].trim();
+        String url = String.format("https://%s/api/v1/instance", instance);
+        JsonElement jsonElement = getJsonElement(url);
+        if (jsonElement == null) {
+            System.out.format("Failed to get instance information for %s.\n", instance);
+            return;
+        }
+        System.out.format("\nInstance: https://%s\nDescription: %s\n", instance, Jsoup.parse(Utils.getProperty(jsonElement, Literals.description.name())).text());
+        System.out.format("Version: %s\n", Utils.getProperty(jsonElement, Literals.version.name()));
+        JsonElement stats = jsonElement.getAsJsonObject().get(Literals.stats.name());
+        System.out.format("Users: %s\n", Utils.getIntegerDisplay(Utils.getProperty(stats, Literals.user_count.name())));
+        System.out.format("Statuses: %s\n", Utils.getIntegerDisplay(Utils.getProperty(stats, Literals.status_count.name())));
+        System.out.format("Domains: %s\n", Utils.getIntegerDisplay(Utils.getProperty(stats, Literals.domain_count.name())));
+        System.out.format("Registration open: %s\n", Utils.isYes(Utils.getProperty(stats, Literals.registrations.name())));
+        if (!full) {
+            return;
+        }
+        url = String.format("https://%s/nodeinfo/2.1.json", instance);
+        jsonElement = getJsonElement(url, true);
+        if (jsonElement == null) {
+            return;
+        }
+        JsonObject jsonObject = jsonElement.getAsJsonObject();
+        System.out.format("Protocols: %s\n", Utils.toString(jsonObject.getAsJsonArray(Literals.protocols.name())));
+        JsonObject jsonObjectMetadata = jsonObject.getAsJsonObject(Literals.metadata.name());
+        System.out.format("Staff accounts: %s\n", Utils.toString(jsonObjectMetadata.getAsJsonArray(Literals.staffAccounts.name()), true, true));
+        System.out.format("Post formats: %s\n", Utils.toString(jsonObjectMetadata.getAsJsonArray(Literals.postFormats.name()), true, true));
+        JsonObject jsonObjectFederation = jsonObjectMetadata.getAsJsonObject(Literals.federation.name());
+        JsonObject jsonObjectMrfSimple = jsonObjectFederation.getAsJsonObject(Literals.mrf_simple.name());
+        System.out.format("Quarantined instances: %s\n", Utils.toString(jsonObjectFederation.getAsJsonArray(Literals.quarantined_instances.name()), true, true));
+        System.out.format("MRF policies: %s\n", Utils.toString(jsonObjectFederation.getAsJsonArray(Literals.mrf_policies.name()), true, true));
+        System.out.format("MRF simple - reject: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.reject.name()), true, true));
+        System.out.format("MRF simple - report removal: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.report_removal.name()), true, true));
+        System.out.format("MRF simple - media removal: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.media_removal.name()), true, true));
+        System.out.format("MRF simple - media NSFW: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.media_nsfw.name()), true, true));
+        System.out.format("MRF simple - federated timeline removal: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.federated_timeline_removal.name()), true, true));
+        System.out.format("MRF simple - banner removal: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.banner_removal.name()), true, true));
+        System.out.format("MRF simple - avatar removal: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.avatar_removal.name()), true, true));
+        System.out.format("MRF simple - accept: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.accept.name()), true, true));
+    }
+
+    private void updateOnstartCommandSettings(String line) {
+        String startupCommand = line.substring(Literals.onstart.name().length() + 1);
+        settingsJsonObject.addProperty(Literals.onstart.name(), startupCommand);
+        JsonArray settingsJsonArray = getSettingsJsonArray();
+        for (JsonElement jsonElement : settingsJsonArray) {
+            if (Utils.getProperty(jsonElement, Literals.id.name()).equals(Utils.getProperty(settingsJsonObject, Literals.id.name()))) {
+                jsonElement.getAsJsonObject().addProperty(Literals.onstart.name(), startupCommand);
+            }
+        }
+        String pretty = gson.toJson(settingsJsonArray);
+        Utils.write(getSettingsFileName(), pretty);
+        System.out.format("Startup command now set to \"%s\" and settings saved for instance: %s\n",
+                startupCommand, Utils.getProperty(settingsJsonObject, Literals.instance.name()));
+
+    }
+
+    private enum Literals {
+        audioFileNotifications, audioFileFails, id, instance, me, milliseconds, quantity,
+        browserCommand, client_name, scopes, website, grant_type, access_token, refresh_token,
+        redirect_uri, redirect_uris, client_id, client_secret, code, expires_in, created_at, content, type, status,
+        none, search, clear, about, blocks, context, debug, ok, url, go, notification, event, payload, acct, display_name,
+        properties, local, notifications, timeline, note, tl, following, followers, lists, gc, stop, home, post, POST, DELETE, unlisted,
+        follow, reblog, favourite, mention, direct, fav, reply, rep, help, quit, exit, whoami, unfav, account_ids, username,
+        visibility, upload, unfollow, title, media_ids, file, description, authorization_code, followed_by, history, day, uses, name,
+        ancestors, descendants, account, accounts, hashtags, statuses, media_attachments, aa, sa, da, user_count, status_count,
+        domain_count, stats, registrations, version, protocols, staffAccounts, metadata, postFormats, quarantined_instances, mrf_policies, mrf_simple,
+        federation, reject, report_removal, media_removal, federated_timeline_removal, banner_removal, avatar_removal, accept,
+        media_nsfw, onstart
+    }
+
     private class WebSocketListener implements Listener {
         private final String stream;
-        private StringBuilder sb = new StringBuilder();
         private final JsonParser jsonParser = new JsonParser();
+        private StringBuilder sb = new StringBuilder();
 
         WebSocketListener(String stream) {
             this.stream = stream;
@@ -1633,47 +1710,5 @@ public class CommandLineInterface {
             System.out.format("Binary data received on WebSocket.\n");
             return Listener.super.onBinary(webSocket, data, last);
         }
-    }
-
-    private void instanceInfo(String line, boolean full) {
-        String instance = line.split("\\s+")[1].trim();
-        String url = String.format("https://%s/api/v1/instance", instance);
-        JsonElement jsonElement = getJsonElement(url);
-        if (jsonElement == null) {
-            System.out.format("Failed to get instance information for %s.\n", instance);
-            return;
-        }
-        System.out.format("\nInstance: https://%s\nDescription: %s\n", instance, Jsoup.parse(Utils.getProperty(jsonElement, Literals.description.name())).text());
-        System.out.format("Version: %s\n", Utils.getProperty(jsonElement, Literals.version.name()));
-        JsonElement stats = jsonElement.getAsJsonObject().get(Literals.stats.name());
-        System.out.format("Users: %s\n", Utils.getIntegerDisplay(Utils.getProperty(stats, Literals.user_count.name())));
-        System.out.format("Statuses: %s\n", Utils.getIntegerDisplay(Utils.getProperty(stats, Literals.status_count.name())));
-        System.out.format("Domains: %s\n", Utils.getIntegerDisplay(Utils.getProperty(stats, Literals.domain_count.name())));
-        System.out.format("Registration open: %s\n", Utils.isYes(Utils.getProperty(stats, Literals.registrations.name())));
-        if (!full) {
-            return;
-        }
-        url = String.format("https://%s/nodeinfo/2.1.json", instance);
-        jsonElement = getJsonElement(url, true);
-        if (jsonElement == null) {
-            return;
-        }
-        JsonObject jsonObject = jsonElement.getAsJsonObject();
-        System.out.format("Protocols: %s\n", Utils.toString(jsonObject.getAsJsonArray(Literals.protocols.name())));
-        JsonObject jsonObjectMetadata = jsonObject.getAsJsonObject(Literals.metadata.name());
-        System.out.format("Staff accounts: %s\n", Utils.toString(jsonObjectMetadata.getAsJsonArray(Literals.staffAccounts.name()), true, true));
-        System.out.format("Post formats: %s\n", Utils.toString(jsonObjectMetadata.getAsJsonArray(Literals.postFormats.name()), true, true));
-        JsonObject jsonObjectFederation = jsonObjectMetadata.getAsJsonObject(Literals.federation.name());
-        JsonObject jsonObjectMrfSimple = jsonObjectFederation.getAsJsonObject(Literals.mrf_simple.name());
-        System.out.format("Quarantined instances: %s\n", Utils.toString(jsonObjectFederation.getAsJsonArray(Literals.quarantined_instances.name()), true, true));
-        System.out.format("MRF policies: %s\n", Utils.toString(jsonObjectFederation.getAsJsonArray(Literals.mrf_policies.name()), true, true));
-        System.out.format("MRF simple - reject: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.reject.name()), true, true));
-        System.out.format("MRF simple - report removal: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.report_removal.name()), true, true));
-        System.out.format("MRF simple - media removal: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.media_removal.name()), true, true));
-        System.out.format("MRF simple - media NSFW: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.media_nsfw.name()), true, true));
-        System.out.format("MRF simple - federated timeline removal: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.federated_timeline_removal.name()), true, true));
-        System.out.format("MRF simple - banner removal: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.banner_removal.name()), true, true));
-        System.out.format("MRF simple - avatar removal: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.avatar_removal.name()), true, true));
-        System.out.format("MRF simple - accept: %s\n", Utils.toString(jsonObjectMrfSimple.getAsJsonArray(Literals.accept.name()), true, true));
     }
 }

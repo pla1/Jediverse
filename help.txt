@@ -105,6 +105,10 @@ notifications or note
     Show notifications.
     https://youtu.be/VGEW3zmuy_A
 
+onstart
+    Set the command to run on-startup.
+    https://youtu.be/7iqp-IsV2mE
+
 properties
     Show Java properties
     https://youtu.be/J2VcyqlbZWM
