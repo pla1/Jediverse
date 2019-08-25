@@ -30,5 +30,5 @@ then
   echo "Downloading $gson."
   wget 'https://repo1.maven.org/maven2/com/google/code/gson/gson/2.8.5/gson-2.8.5.jar' --output-document="$gson"
 fi
-javac  -encoding ISO-8859-1 -cp .:* src/main/java/com/pla/jediverse/*.java
+javac  -encoding UTF-8 -cp .:* src/main/java/com/pla/jediverse/*.java
 java -cp src/main/java:.:* com.pla.jediverse.CommandLineInterface
