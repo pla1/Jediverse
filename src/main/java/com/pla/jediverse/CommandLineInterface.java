@@ -61,6 +61,7 @@ public class CommandLineInterface {
     private JsonArray jsonArrayFollowers = new JsonArray();
     private ArrayList<JsonElement> mediaArrayList = new ArrayList<>();
     private JsonArray jsonArrayAccounts = new JsonArray();
+    private JsonArray jsonArrayAccountSearchResults = new JsonArray();
     private File jsonLoggerFile;
 
     private CommandLineInterface() {
@@ -156,7 +157,7 @@ public class CommandLineInterface {
             clip.start();
 
         } catch (Exception e) {
-         //   e.printStackTrace();
+            //   e.printStackTrace();
         }
         //finally {
         //      Utils.close(clip, audioInputStream);
@@ -357,6 +358,9 @@ public class CommandLineInterface {
             if ("audio-fails".equals(words[0]) && words.length == 2) {
                 updateAudioFileNameSetting(words[1], Literals.audioFileFails);
             }
+            if ("accounts-search".equals(words[0]) && words.length == 2) {
+                accountsSearch(words[1]);
+            }
             if (Literals.aa.name().equals(line)) {
                 createApp();
             }
@@ -488,11 +492,15 @@ public class CommandLineInterface {
                     continue;
                 }
                 JsonElement jsonElement = jsonArrayAll.get(index);
+                System.out.format("\n\nDEBUG: %s\n\n", jsonElement.toString());
                 String urlString = Utils.getProperty(jsonElement, Literals.url.name());
                 if (Utils.isBlank(urlString)) {
                     JsonElement status = jsonElement.getAsJsonObject().get(Literals.status.name());
                     urlString = Utils.getProperty(status, Literals.url.name());
                 }
+
+                // TODO testing notice ID on current instance
+                urlString = String.format("https://%s/notice/%s", Utils.getProperty(settingsJsonObject, Literals.instance.name()), Utils.getProperty(jsonElement, Literals.id.name()));
                 if (Utils.isNotBlank(urlString)) {
                     String browserCommand = Utils.getProperty(settingsJsonObject, Literals.browserCommand.name());
                     if (Utils.isBlank(browserCommand)) {
@@ -876,7 +884,11 @@ public class CommandLineInterface {
             int i = 0;
             for (JsonElement jsonElement : jsonArray) {
                 logger.info(gson.toJson(jsonElement));
-                System.out.format("%d %s %s %s\n", i++, green(Utils.getProperty(jsonElement, Literals.acct.name())), Utils.getProperty(jsonElement, Literals.display_name.name()), Utils.getProperty(jsonElement, Literals.url.name()));
+                System.out.format("%d %s %s %s\n",
+                        i++,
+                        green(Utils.getProperty(jsonElement, Literals.acct.name())),
+                        Utils.getProperty(jsonElement, Literals.display_name.name()),
+                        Utils.getProperty(jsonElement, Literals.url.name()));
             }
             System.out.format("%d accounts on list %s.\n", jsonArray.size(), listId);
         }
@@ -1082,7 +1094,8 @@ public class CommandLineInterface {
             JsonObject account = je.getAsJsonObject();
             String displayName = getAccountDisplayName(account);
             String note = Jsoup.parse(Utils.getProperty(account, Literals.note.name())).text();
-            System.out.format("%s %s %s\n", green(displayName), Utils.getProperty(account, Literals.url.name()), note);
+            String id = Utils.getProperty(account, "id");
+            System.out.format("%s %s %s %s\n", green(displayName), Utils.getProperty(account, Literals.url.name()), note, id);
         }
     }
 
@@ -1323,6 +1336,32 @@ public class CommandLineInterface {
         System.out.println(urlString);
         JsonObject jsonObject = postAsJson(Utils.getUrl(urlString), null);
         System.out.format("Unfavorited: %s\n", Utils.getProperty(jsonObject, Literals.url.name()));
+    }
+
+    private void accountsSearch(String q) {
+        String urlString = String.format("https://%s/api/v1/accounts/search?q=%s", settingsJsonObject.get(Literals.instance.name()).getAsString(), Utils.urlEncodeComponent(q));
+        System.out.println(urlString);
+        jsonArrayAccountSearchResults = getJsonArray(urlString);
+        if (jsonArrayAccountSearchResults.size() == 0) {
+            System.out.format("No accounts found with query \"%s\"\n", q);
+            return;
+        }
+
+        for (int i = 0; i < jsonArrayAccountSearchResults.size(); i++) {
+            JsonObject account = jsonArrayAccountSearchResults.get(i).getAsJsonObject();
+            String displayName = getAccountDisplayName(account);
+            System.out.format("%d %s %s %s\n", i, green(displayName), Utils.getProperty(account, Literals.username.name()), Utils.getProperty(account, Literals.url.name()));
+        }
+        System.out.format("Choose one of the accounts above\n");
+        int index = Utils.getInt(ask("Which account to list their statuses?"));
+        if (index > jsonArrayAccountSearchResults.size()) {
+            System.out.format("Invalid selection. Index %d is greater than the account quantity of %d\n", jsonArrayAccountSearchResults.size());
+            return;
+        }
+        JsonElement accountJe = jsonArrayAccountSearchResults.get(index);
+        urlString = String.format("https://%s/api/v1/accounts/%s/statuses", settingsJsonObject.get(Literals.instance.name()).getAsString(), Utils.getProperty(accountJe, Literals.id.name()));
+       JsonArray statuses = getJsonArray(urlString);
+       printJsonElements(statuses, null);
     }
 
     //// TODO: 5/24/19 Handle 500 exception on repeated unfollow request.
