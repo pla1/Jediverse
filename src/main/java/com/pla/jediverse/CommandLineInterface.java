@@ -492,7 +492,7 @@ public class CommandLineInterface {
                     continue;
                 }
                 JsonElement jsonElement = jsonArrayAll.get(index);
-               // System.out.format("\n\nDEBUG: %s\n\n", jsonElement.toString());
+                // System.out.format("\n\nDEBUG: %s\n\n", jsonElement.toString());
                 String urlString = Utils.getProperty(jsonElement, Literals.url.name());
                 if (Utils.isBlank(urlString)) {
                     JsonElement status = jsonElement.getAsJsonObject().get(Literals.status.name());
@@ -1346,22 +1346,24 @@ public class CommandLineInterface {
             System.out.format("No accounts found with query \"%s\"\n", q);
             return;
         }
-
-        for (int i = 0; i < jsonArrayAccountSearchResults.size(); i++) {
-            JsonObject account = jsonArrayAccountSearchResults.get(i).getAsJsonObject();
-            String displayName = getAccountDisplayName(account);
-            System.out.format("%d %s %s %s\n", i, green(displayName), Utils.getProperty(account, Literals.username.name()), Utils.getProperty(account, Literals.url.name()));
-        }
-        System.out.format("Choose one of the accounts above\n");
-        int index = Utils.getInt(ask("Which account to list their statuses?"));
-        if (index > jsonArrayAccountSearchResults.size()) {
-            System.out.format("Invalid selection. Index %d is greater than the account quantity of %d\n", jsonArrayAccountSearchResults.size());
-            return;
+        int index = 0;
+        if (jsonArrayAccountSearchResults.size() != 1) {
+            for (int i = 0; i < jsonArrayAccountSearchResults.size(); i++) {
+                JsonObject account = jsonArrayAccountSearchResults.get(i).getAsJsonObject();
+                String displayName = getAccountDisplayName(account);
+                System.out.format("%d %s %s %s\n", i, green(displayName), Utils.getProperty(account, Literals.username.name()), Utils.getProperty(account, Literals.url.name()));
+            }
+            System.out.format("Choose one of the accounts above\n");
+            index = Utils.getInt(ask("Which account to list their statuses?"));
+            if (index > jsonArrayAccountSearchResults.size()) {
+                System.out.format("Invalid selection. Index %d is greater than the account quantity of %d\n", jsonArrayAccountSearchResults.size());
+                return;
+            }
         }
         JsonElement accountJe = jsonArrayAccountSearchResults.get(index);
         urlString = String.format("https://%s/api/v1/accounts/%s/statuses", settingsJsonObject.get(Literals.instance.name()).getAsString(), Utils.getProperty(accountJe, Literals.id.name()));
-       JsonArray statuses = getJsonArray(urlString);
-       printJsonElements(statuses, null);
+        JsonArray statuses = getJsonArray(urlString);
+        printJsonElements(statuses, null);
     }
 
     //// TODO: 5/24/19 Handle 500 exception on repeated unfollow request.
