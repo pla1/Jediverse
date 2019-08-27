@@ -492,7 +492,7 @@ public class CommandLineInterface {
                     continue;
                 }
                 JsonElement jsonElement = jsonArrayAll.get(index);
-                System.out.format("\n\nDEBUG: %s\n\n", jsonElement.toString());
+               // System.out.format("\n\nDEBUG: %s\n\n", jsonElement.toString());
                 String urlString = Utils.getProperty(jsonElement, Literals.url.name());
                 if (Utils.isBlank(urlString)) {
                     JsonElement status = jsonElement.getAsJsonObject().get(Literals.status.name());
