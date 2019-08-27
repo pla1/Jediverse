@@ -1361,6 +1361,7 @@ public class CommandLineInterface {
             }
         }
         JsonElement accountJe = jsonArrayAccountSearchResults.get(index);
+        System.out.format("Retrieving statuses by %s.\n", green(getAccountDisplayName(accountJe)));
         urlString = String.format("https://%s/api/v1/accounts/%s/statuses", settingsJsonObject.get(Literals.instance.name()).getAsString(), Utils.getProperty(accountJe, Literals.id.name()));
         JsonArray statuses = getJsonArray(urlString);
         printJsonElements(statuses, null);
