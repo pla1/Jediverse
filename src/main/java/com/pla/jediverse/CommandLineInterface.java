@@ -1348,7 +1348,7 @@ public class CommandLineInterface {
         } else {
             System.out.format("%d accounts found for search \"%s\"\n", jsonArrayAccountSearchResults.size(), q);
         }
-        int index = 0;
+        int index = -1;
         if (jsonArrayAccountSearchResults.size() != 1) {
             if (q.contains("@")) {
                 System.out.format("Search contains the at symbol. Assuming it is a full user name search. Will look for exact match.\n");
@@ -1362,7 +1362,7 @@ public class CommandLineInterface {
                 }
 
             }
-            if (index == 0) {
+            if (index == -1) {
                 for (int i = 0; i < jsonArrayAccountSearchResults.size(); i++) {
                     JsonObject account = jsonArrayAccountSearchResults.get(i).getAsJsonObject();
                     String displayName = getAccountDisplayName(account);
@@ -1375,6 +1375,10 @@ public class CommandLineInterface {
                 System.out.format("Invalid selection. Index %d is greater than the account quantity of %d\n", jsonArrayAccountSearchResults.size());
                 return;
             }
+        }
+        if (index == -1) {
+            System.out.format("\"%s\" not found.\n", q);
+            return;
         }
         JsonElement accountJe = jsonArrayAccountSearchResults.get(index);
         System.out.format("Retrieving statuses by %s.\n", green(getAccountDisplayName(accountJe)));
