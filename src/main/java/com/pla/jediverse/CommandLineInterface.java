@@ -1375,6 +1375,8 @@ public class CommandLineInterface {
                 System.out.format("Invalid selection. Index %d is greater than the account quantity of %d\n", jsonArrayAccountSearchResults.size());
                 return;
             }
+        } else {
+            index = 1;
         }
         if (index == -1) {
             System.out.format("\"%s\" not found.\n", q);
