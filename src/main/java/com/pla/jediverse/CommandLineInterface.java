@@ -1345,16 +1345,32 @@ public class CommandLineInterface {
         if (jsonArrayAccountSearchResults.size() == 0) {
             System.out.format("No accounts found with query \"%s\"\n", q);
             return;
+        } else {
+            System.out.format("%d accounts found for search \"%s\"\n", jsonArrayAccountSearchResults.size(), q);
         }
         int index = 0;
         if (jsonArrayAccountSearchResults.size() != 1) {
-            for (int i = 0; i < jsonArrayAccountSearchResults.size(); i++) {
-                JsonObject account = jsonArrayAccountSearchResults.get(i).getAsJsonObject();
-                String displayName = getAccountDisplayName(account);
-                System.out.format("%d %s %s %s\n", i, green(displayName), Utils.getProperty(account, Literals.username.name()), Utils.getProperty(account, Literals.url.name()));
+            if (q.contains("@")) {
+                System.out.format("Search contains the at symbol. Assuming it is a full user name search. Will look for exact match.\n");
+                for (int i = 0; i < jsonArrayAccountSearchResults.size(); i++) {
+                    JsonObject account = jsonArrayAccountSearchResults.get(i).getAsJsonObject();
+                    String displayName = getAccountDisplayName(account).toLowerCase();
+                    if (displayName.contains(q.toLowerCase())) {
+                        index = i;
+                        System.out.format("Found exact match %s\n", green(displayName));
+                    }
+                }
+
             }
-            System.out.format("Choose one of the accounts above\n");
-            index = Utils.getInt(ask("Which account to list their statuses?"));
+            if (index == 0) {
+                for (int i = 0; i < jsonArrayAccountSearchResults.size(); i++) {
+                    JsonObject account = jsonArrayAccountSearchResults.get(i).getAsJsonObject();
+                    String displayName = getAccountDisplayName(account);
+                    System.out.format("%d %s %s %s\n", i, green(displayName), Utils.getProperty(account, Literals.username.name()), Utils.getProperty(account, Literals.url.name()));
+                }
+                System.out.format("Choose one of the accounts above\n");
+                index = Utils.getInt(ask("Which account to list their statuses?"));
+            }
             if (index > jsonArrayAccountSearchResults.size()) {
                 System.out.format("Invalid selection. Index %d is greater than the account quantity of %d\n", jsonArrayAccountSearchResults.size());
                 return;
