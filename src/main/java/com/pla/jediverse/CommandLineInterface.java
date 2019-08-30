@@ -1376,7 +1376,7 @@ public class CommandLineInterface {
                 return;
             }
         } else {
-            index = 1;
+            index = 0;
         }
         if (index == -1) {
             System.out.format("\"%s\" not found.\n", q);
