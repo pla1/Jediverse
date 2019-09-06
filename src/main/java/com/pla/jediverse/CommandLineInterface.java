@@ -1103,8 +1103,10 @@ public class CommandLineInterface {
         String searchString = line.substring(7);
         System.out.format("Searching for \"%s\"...\n", searchString);
         String encodedQuery = Utils.urlEncodeComponent(searchString);
-        String urlString = String.format("https://%s/api/v2/search?q=%s&limit=%d",
-                Utils.getProperty(settingsJsonObject, Literals.instance.name()), encodedQuery, getQuantity());
+        int offset = 0;
+        // TODO implement offset for searches.
+        String urlString = String.format("https://%s/api/v2/search?q=%s&limit=%d&offset=%d",
+                Utils.getProperty(settingsJsonObject, Literals.instance.name()), encodedQuery, getQuantity(), offset);
         JsonElement jsonElement = getJsonElement(urlString);
         if (jsonElement != null) {
             JsonArray statuses = jsonElement.getAsJsonObject().getAsJsonArray(Literals.statuses.name());
