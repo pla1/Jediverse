@@ -48,6 +48,7 @@ public class Utils {
     public static final String SYMBOL_MAILBOX = "\uD83D\uDCEA ";
     public static final String SYMBOL_REPEAT = "♻ ";
     public static final String SYMBOL_PICTURE_FRAME = "\uD83D\uDDBC";
+    public static long MILLISECONDS_ONE_MINUTE = 1000l * 60l;
 
     public static int alphaComparison(String s1, String s2) {
         if (s1 == null) {
@@ -477,7 +478,6 @@ public class Utils {
             return false;
         }
     }
-
     public static String humanReadableByteCount(long bytes) {
         return humanReadableByteCount(bytes, true);
 

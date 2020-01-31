@@ -63,6 +63,7 @@ public class CommandLineInterface {
     private JsonArray jsonArrayAccounts = new JsonArray();
     private JsonArray jsonArrayAccountSearchResults = new JsonArray();
     private File jsonLoggerFile;
+    private long pongTime = System.currentTimeMillis();
 
     private CommandLineInterface() {
         setup();
@@ -245,6 +246,10 @@ public class CommandLineInterface {
             if (line.trim().length() == 0) {
                 System.out.format("Line is blank. %s\n", line);
                 continue;
+            }
+            if (System.currentTimeMillis() - pongTime > Utils.MILLISECONDS_ONE_MINUTE) {
+                System.out.format("PONG not received since %s. Exiting.\n", new Date(pongTime));
+                System.exit(-1);
             }
             String[] words = line.split("\\s+");
             if (Literals.search.name().equals(words[0]) && words.length > 1) {
@@ -1704,6 +1709,22 @@ public class CommandLineInterface {
         private final JsonParser jsonParser = new JsonParser();
         private StringBuilder sb = new StringBuilder();
 
+        class Pinger extends Thread {
+            WebSocket webSocket;
+
+            Pinger(WebSocket webSocket) {
+                this.webSocket = webSocket;
+            }
+
+            @Override
+            public void run() {
+                while (true) {
+                    webSocket.sendPing(ByteBuffer.wrap("PING".getBytes()));
+                    Utils.sleep(30);
+                }
+            }
+        }
+
         WebSocketListener(String stream) {
             this.stream = stream;
         }
@@ -1739,19 +1760,20 @@ public class CommandLineInterface {
 
         @Override
         public CompletionStage<?> onPing(WebSocket webSocket, ByteBuffer message) {
-            //     System.out.format("onPing Message: %s\n", message);
             return Listener.super.onPing(webSocket, message);
         }
 
         @Override
         public CompletionStage<?> onPong(WebSocket webSocket, ByteBuffer message) {
-            System.out.format("onPong Message: %s\n", message);
+            pongTime = System.currentTimeMillis();
             return Listener.super.onPong(webSocket, message);
         }
 
         @Override
         public void onOpen(WebSocket webSocket) {
             System.out.format("WebSocket opened for %s stream.\n", stream);
+            Pinger pinger = new Pinger(webSocket);
+            pinger.start();
             Listener.super.onOpen(webSocket);
         }
 
