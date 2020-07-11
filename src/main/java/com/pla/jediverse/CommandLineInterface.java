@@ -247,7 +247,7 @@ public class CommandLineInterface {
                 System.out.format("Line is blank. %s\n", line);
                 continue;
             }
-            if (System.currentTimeMillis() - pongTime > Utils.MILLISECONDS_ONE_MINUTE) {
+            if (webSockets.size() > 0 && System.currentTimeMillis() - pongTime > Utils.MILLISECONDS_ONE_MINUTE) {
                 System.out.format("PONG not received since %s. Exiting.\n", new Date(pongTime));
                 System.exit(-1);
             }
