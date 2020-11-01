@@ -641,6 +641,9 @@ public class CommandLineInterface {
         for (JsonElement accountJsonElement : jsonArrayFollowing) {
             String acct = Utils.getProperty(accountJsonElement, Literals.acct.name());
             String username = Utils.getProperty(accountJsonElement, Literals.username.name());
+            if (searchString.startsWith("@")) {
+                searchString = searchString.substring(1);
+            }
             if (Utils.contains(acct, searchString) || Utils.contains(username, searchString)) {
                 foundJsonArray.add(accountJsonElement);
             }
